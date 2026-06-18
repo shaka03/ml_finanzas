@@ -1,9 +1,9 @@
 ---
 title: 'Solución Taller 1: Preprocesamiento y visualización de datos
 UNIVERSIDAD DEL VALLE – FACULTAD DE INGENIERIA 
-Métodos Cuantitativos para el Análisis de la Información'     
+Machine Leraning para Gestión Financiera'     
 subtitle: "Profesor: Ivan Mauricio Bermúdez Vera"
-author: "Estuadiantes: Juan Chacón - Jhon Tascón - Valeria Saldaña"
+author: "Estudiantes: Valeria Saldaña - Juan Chacón - Jhon Tascón"
 output: pdf_document
 ---
 
@@ -38,23 +38,34 @@ pacman::p_load(lubridate,
                ggplot2,
                scales,
                naniar,
-               purrr)
-
+               purrr,
+               tidyr,
+               GGally,
+               tidytext,
+               readr)
 
 ```
 
+
+Introducir...
+
+## 0. Carga del conjunto de datos
 
 El conjunto de datos German Credit presenta información sobre 1000 solicitantes de crédito. Cada variable en el conjunto permite una aproximación a las características financieras y socioeconómicas del potencial cliente a su vez que permite construir un análisis de estas variables con respecto a su comportamiento crediticio.
 
+```{r echo=FALSE}
+german <- read.table("german.data", header = FALSE, sep = "")
 
-```{r}
-german <- read.table("C:/Users/salda/Downloads/german.data", header = FALSE, sep = "")
+# Vista del dataset
+print(head(german))
 
 ```
 
+Como se logra evidenciar en la escrtura anterior, hay registros que están codificados, además de que no se tienen el nombre de las columnas. En la siguiente sección, se realizará la limpieza y el preprocesamiento de los datos.
+
 ## 1. Diagnóstico de calidad de datos 
 
-```{r}
+```{r include=FALSE}
 #Se actualizan los nombres de las variables
 names(german) <- c("checking_status", "duration", 
 "credit_history", "purpose","credit_amount", 
@@ -70,7 +81,7 @@ names(german) <- c("checking_status", "duration",
 
 Se inicia verificando la estructura general de los datos, en los que se presentan 1000 observaciones y 20 variables. A continuación se presentan los tipos de variables donde se identifican 13 variables tipo caracter y 7 variables numéricas:
 
-```{r}
+```{r echo=FALSE}
 str(german)
 
 ```
@@ -200,7 +211,23 @@ for (var in names(dict_mapping)) {
 ```{r, echo=FALSE}
 glimpse(german)
 ```
-Ahora, una vez realizada la recodificación, se procede a verificar si los datos numéricos y categóricos cumplen con sus características de validación que se describen a continuación:
+
+Ahora, una vez realizada la recodificación, se realiza un resumen estadístico de las variables a analizar.
+
+```{r, echo=FALSE}
+# Resumen de las variables
+summary_table = summary(german)
+kable(
+  summary_table,
+  digits = 2,
+  caption = "Resumen estadístico"
+)
+```
+
+analizar...
+
+
+Una vez realizado el resumen estadístico, se procede a verificar si los datos numéricos y categóricos cumplen con sus características de validación que se describen a continuación:
 
 ```{r, include=FALSE}
 # Reglas de validación
@@ -272,7 +299,6 @@ A su vez, se encuentra que el número de datos faltantes en toda la base es igua
 sum(is.na(german))
 ```
 
-
 ```{r, echo=FALSE}
 # Diagnóstico inicial de faltantes
 
@@ -281,13 +307,12 @@ naniar::vis_miss(german) +
     axis.text.x = element_text(size = 10, angle = 45, hjust = 1)
   )
 ```
-En cuanto a datos atípicos, se encuentran lo
 
 ```{r, include=FALSE}
 datos_num <- german %>% dplyr::select(where(is.numeric))
 ```
 
-Criterio Tukey
+Una vez se revisan los datos faltantes, se procede a realizar un análisis de anomalías. Para ello, usamos el *criterio Tukey*:
 
 ```{r, include=FALSE}
 out_tukey <- boxplot.stats(german$duration)$out
@@ -320,7 +345,6 @@ id_out_uni(german$credit_amount, method = "tukey")
 
 
 ```{r, echo=FALSE}
-
 
 vars_num <- c(
   "duration",
@@ -367,9 +391,7 @@ kable(
 ```
 
 
-```{r}
-library(tidyr)
-library(ggplot2)
+```{r echo=FALSE}
 
 datos_long <- german %>%
   pivot_longer(
@@ -399,8 +421,7 @@ ggplot(datos_long,
   )
 ```
 
-```{r}
-
+```{r echo=FALSE}
 
 vars_num <- c(
   "duration",
@@ -435,10 +456,98 @@ outliers_filas <- map_dfr(vars_num, function(v){
 outliers_filas
 ```
 
+Con base en los boxplots y el criterio Tukey... Sin embargo, a continuación se realiza los diagramas de dispersión de las variables numéricas y un análisis multivariado para evidenciar si hay algunas anomalías que son influyentes a nivel multivariable.
+
+```{r echo=FALSE, fig.width=12, fig.height=8}
+
+# Tu vector de variables
+vars_num <- c(
+  "duration",
+  "credit_amount",
+  "installment_rate",
+  "residence_since",
+  "age",
+  "existing_credits",
+  "people_liable"
+)
+
+# Crear el pairplot avanzado
+ggpairs(german, 
+        columns = vars_num,
+        title = "Análisis de Variables Numéricas",
+        lower = list(continuous = wrap("points", alpha = 0.5, size = 1, color = "darkcyan"))
+)
+```
+
+```{r echo=FALSE, fig.width=12, fig.height=8}
+
+out_mult <- function(datos_num, k = 5, alpha = 0.01) {
+  
+  n <- nrow(datos_num)
+  p <- ncol(datos_num)
+  
+  # Distancia de Mahalanobis
+  Distance <- mahalanobis(
+    datos_num,
+    center = colMeans(datos_num),
+    cov = cov(datos_num)
+  )
+  
+  Limit <- qchisq(1 - alpha, df = p)
+  id_dist <- which(Distance > Limit)
+  
+  # LOF
+  Score_LOF <- dbscan::lof(datos_num, minPts = k)
+  id_lof <- order(Score_LOF, decreasing = TRUE)[1:ceiling(alpha * n)]
+  
+  # Visualización
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par))
+  
+  par(mfrow = c(2, 1))
+  
+  plot(Distance,
+       pch = 20,
+       main = "Distancia de Mahalanobis",
+       ylab = "Distance")
+  abline(h = Limit, col = "red", lwd = 2, lty = 2)
+  text(id_dist, Distance[id_dist], labels = id_dist, col = "red", pos = 3, cex = 0.8)
+  
+  plot(Score_LOF,
+       pch = 20,
+       main = "Local Outlier Factor (LOF)",
+       ylab = "LOF")
+  text(id_lof, Score_LOF[id_lof], labels = id_lof, col = "red", pos = 3, cex = 0.8)
+  
+  return(list(
+    Distance = Distance,
+    Limit = Limit,
+    Out_dist = id_dist,
+    LOF = Score_LOF,
+    Out_LOF = id_lof
+  ))
+}
+
+datos_num <- german %>% dplyr::select(where(is.numeric))
+
+id_out_mult <- out_mult(datos_num, k = 5, alpha = 0.01)
+
+# Resumen comparativo multivariado
+resumen_mult <- list(
+  n_out_mahalanobis = length(id_out_mult$Out_dist),
+  n_out_lof = length(id_out_mult$Out_LOF)
+)
+
+resumen_mult <- as_tibble(resumen_mult)
+
+kable(
+  resumen_mult
+)
+```
+Analizar y decir que, a pesar de que los métodos dicen que hay ciertas anomalías en los datos, estos no parecen ser errores, y en los scatterplots no se evidencian inconsistencias.
 
 
 ## 2. Análisis exploratorio ##
-
 
 
 ### Distribución de la variable objetivo (default) 
@@ -447,10 +556,16 @@ outliers_filas
 ```{r, echo=FALSE}
 ggplot(german, aes(x = default)) +
   geom_bar(fill = "steelblue") +
+  geom_text(aes(label = percent(after_stat(count) / sum(after_stat(count)))), 
+            stat = "count", 
+            vjust = -0.5,
+            color = "black", 
+            size = 4) +
   labs(title = "Distribución de la variable objetivo (default)",
        x = "Default",
        y = "Frecuencia") +
-  theme_minimal()
+  theme_minimal() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 ```
 
 
@@ -481,8 +596,6 @@ estadisticos <- data.frame(
   Minimo = sapply(german[vars_num], min),
   Maximo = sapply(german[vars_num], max)
 )
-
-estadisticos
 ```
 
 
@@ -496,8 +609,6 @@ kable(
 
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-library(tidyverse)
-
 vars_num <- c(
   "duration",
   "credit_amount",
@@ -551,7 +662,6 @@ ggplot(datos_long, aes(x = "", y = valor)) +
 ### Análisis descriptivo de variables categóricas 
 
 ```{r, echo=FALSE}
-library(tidyverse)
 
 vars_cat <- c(
   "checking_status",
@@ -614,7 +724,6 @@ kable(
 A continuación se presentan las gráficas de barras para las variables categóricas asociadas a aspectos financieros del crédito:
 
 ```{r, echo=FALSE}
-library(tidyverse)
 
 vars_cat <- c(
   "checking_status",
@@ -625,16 +734,34 @@ vars_cat <- c(
   "other_installment_plans"
 )
 
-datos_long <- german %>%
+# Flujo completo: desde el formato ancho hasta el gráfico final
+german %>%
+  # 1. Transformar a formato largo (tu código original)
   pivot_longer(
     cols = all_of(vars_cat),
     names_to = "variable",
     values_to = "categoria"
-  )
-
-ggplot(datos_long, aes(x = categoria)) +
-  geom_bar(fill = "steelblue") +
+  ) %>%
+  
+  # 2. Calcular frecuencias y porcentajes
+  group_by(variable, categoria) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(variable) %>%
+  mutate(porcentaje = n / sum(n)) %>%
+  ungroup() %>%
+  
+  # 3. Ordenar las categorías de mayor a menor según el facet
+  mutate(categoria = reorder_within(categoria, -n, variable)) %>%
+  
+  # 4. Construir el gráfico
+  ggplot(aes(x = categoria, y = n)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = percent(porcentaje, accuracy = 1)), 
+            vjust = -0.5, 
+            size = 3) +
   facet_wrap(~ variable, scales = "free_x", ncol = 3) +
+  scale_x_reordered() + # Limpia las etiquetas del eje X
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) + # Espacio superior para textos
   theme_minimal() +
   labs(
     title = "Distribución de variables categóricas",
@@ -642,11 +769,7 @@ ggplot(datos_long, aes(x = categoria)) +
     y = "Frecuencia"
   ) +
   theme(
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1,
-      size = 8
-    ),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
     strip.text = element_text(face = "bold")
   )
 ```
@@ -655,24 +778,48 @@ Igualmente, se grafican las variables socioeconómicas de los solicitantes, lo c
 
 ```{r, echo=FALSE}
 
-library(tidyverse)
-
 vars_cat <- c(
   "personal_status_sex",
   "property",
   "housing"
 )
 
-datos_long <- german %>%
+# Flujo completo con conteos, ordenamiento y porcentajes
+german %>%
+  # 1. Transformar a formato largo
   pivot_longer(
     cols = all_of(vars_cat),
     names_to = "variable",
     values_to = "categoria"
-  )
-
-ggplot(datos_long, aes(x = categoria)) +
-  geom_bar(fill = "steelblue") +
+  ) %>%
+  
+  # 2. Calcular frecuencias (n) y porcentajes
+  group_by(variable, categoria) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(variable) %>%
+  mutate(porcentaje = n / sum(n)) %>%
+  ungroup() %>%
+  
+  # 3. Ordenar las categorías de mayor a menor DENTRO de cada facet
+  mutate(categoria = reorder_within(categoria, -n, variable)) %>%
+  
+  # 4. Construir el gráfico con geom_col
+  ggplot(aes(x = categoria, y = n)) +
+  geom_col(fill = "steelblue") +
+  
+  # 5. Agregar los porcentajes encima de las barras
+  geom_text(aes(label = percent(porcentaje, accuracy = 1)), 
+            vjust = -0.5, 
+            size = 3) +
+  
+  # 6. Configurar los facets y limpiar las etiquetas
   facet_wrap(~ variable, scales = "free_x", ncol = 3) +
+  scale_x_reordered() + 
+  
+  # Dar un margen superior del 15% para que los números no se corten
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  
+  # Tu tema y etiquetas
   theme_minimal() +
   labs(
     title = "Distribución de variables categóricas",
@@ -680,10 +827,7 @@ ggplot(datos_long, aes(x = categoria)) +
     y = "Frecuencia"
   ) +
   theme(
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
+    axis.text.x = element_text(angle = 45, hjust = 1),
     strip.text = element_text(face = "bold")
   )
 
@@ -692,8 +836,6 @@ ggplot(datos_long, aes(x = categoria)) +
 Finalmente se establecen las características asociadas al entorno laboral como una característica relevante del individuo ya que permitiría ser un medio de solvencia para respaldar al crédito:
 ```{r, echo=FALSE}
 
-library(tidyverse)
-
 vars_cat <- c(
   "employment",
   "job",
@@ -701,18 +843,42 @@ vars_cat <- c(
   "foreign_worker"
 )
 
-datos_long <- german %>%
+# Flujo completo adaptado a tus nuevas variables
+german %>%
+  # 1. Transformar a formato largo
   pivot_longer(
     cols = all_of(vars_cat),
     names_to = "variable",
     values_to = "categoria"
-  )
-
-ggplot(datos_long, aes(x = categoria)) +
-  geom_bar(fill = "steelblue") +
-  facet_wrap(~ variable,
-             scales = "free_x",
-             ncol = 2) +
+  ) %>%
+  
+  # 2. Calcular frecuencias y porcentajes
+  group_by(variable, categoria) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(variable) %>%
+  mutate(porcentaje = n / sum(n)) %>%
+  ungroup() %>%
+  
+  # 3. Ordenar las categorías de mayor a menor internamente
+  mutate(categoria = reorder_within(categoria, -n, variable)) %>%
+  
+  # 4. Construir el gráfico base
+  ggplot(aes(x = categoria, y = n)) +
+  geom_col(fill = "steelblue") +
+  
+  # 5. Agregar los porcentajes encima de las barras
+  geom_text(aes(label = percent(porcentaje, accuracy = 1)), 
+            vjust = -0.5, 
+            size = 3) +
+  
+  # 6. Configurar los facets (manteniendo tu ncol = 2)
+  facet_wrap(~ variable, scales = "free_x", ncol = 2) +
+  scale_x_reordered() + 
+  
+  # Expandir el límite superior de Y para acomodar el texto
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  
+  # Tus temas y etiquetas personalizadas
   theme_minimal() +
   labs(
     title = "Características laborales y demográficas",
@@ -720,18 +886,18 @@ ggplot(datos_long, aes(x = categoria)) +
     y = "Frecuencia"
   ) +
   theme(
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1,
-      size = 8
-    ),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
     strip.text = element_text(face = "bold")
   )
 
 ```
 
 
+### Análisis bivariado y relación con variable target ###
+
 ```{r, echo=FALSE}
+
+# Variables tipo financieras
 vars_financieras <- c(
   "checking_status",
   "credit_history",
@@ -774,7 +940,7 @@ ggplot(datos_long,
 
 ```{r, echo=FALSE}
 
-
+# Variables tipo categóricas
 vars_cat <- c(
   "personal_status_sex",
   "property",
@@ -817,6 +983,8 @@ ggplot(
 
 
 ```{r, echo=FALSE}
+
+# Variables tipo laborales y demográficas
 
 vars_cat <- c(
   "employment",
@@ -863,7 +1031,7 @@ ggplot(
 
 ```{r, echo=FALSE}
 
-
+# Variables numéricas
 vars_num <- c(
   "duration",
   "credit_amount",
@@ -903,6 +1071,141 @@ ggplot(
 
 ```
 
+```{r echo=FALSE, fig.width=12, fig.height=8}
 
+# Pairplot variables numéricas con target
+vars_num <- c(
+  "duration",
+  "credit_amount",
+  "installment_rate",
+  "residence_since",
+  "age",
+  "existing_credits",
+  "people_liable"
+)
 
+ggpairs(german, 
+        columns = vars_num,
+        mapping = aes(color = default, alpha = 0.6),
+        title = "Matriz de Dispersión por Condición de Default",
+        upper = "blank" # <--- Esto elimina el triángulo superior
+) +
+theme_minimal()
 
+```
+
+```{r echo=FALSE}
+
+# Matriz de Correlación
+datos_num <- german[, vars_num]
+matriz_corr <- cor(datos_num, use = "complete.obs")
+test_res <- cor.mtest(datos_num, conf.level = 0.95)
+mis_colores <- colorRampPalette(c("steelblue", "white", "firebrick"))(100)
+
+# 5. Generamos el gráfico
+corrplot(matriz_corr, 
+         method = "ellipse",
+         type = "upper",
+         p.mat = test_res$p,
+         sig.level = 0.05,
+         insig = "blank",
+         addCoef.col = "black",
+         number.cex = 0.7,
+         col = mis_colores,
+         tl.col = "black",
+         tl.srt = 45,
+         diag = FALSE
+)
+```
+Anlizar...
+
+## 3. Preprocesamiento de datos ##
+
+Con base en el análisis exploratorio, se presenta una alta cardinalidad en las variable purpose. Para este caso, se agruparán sus categorías por su naturaleza de la siguiente manera:
+
+- Vehículos: `car_new, car_used`
+
+- Hogar: `radio_tv, furniture_equipment, domestic_appliances, repairs`
+
+- Inversión/Desarrollo: `business, education, retraining`
+
+- Otros: `others`
+
+A continuación, se presenta las agrupaciones y sus respectivos resultados:
+
+```{r include=FALSE}
+# Crear la nueva agrupación
+german <- german %>%
+  mutate(purpose_grouped = case_when(
+    purpose %in% c("car_new", "car_used") ~ "Vehicles",
+    purpose %in% c("radio_tv", "furniture_equipment", "domestic_appliances", "repairs") ~ "Home",
+    purpose %in% c("business", "education", "retraining") ~ "Investment/Development",
+    TRUE ~ "Others" # Atrapa la categoría 'others' y cualquier otra no listada
+  ))
+```
+
+```{r echo=FALSE}
+# Gráfico de frecuencias para el propósito agrupado
+german %>%
+  count(purpose_grouped) %>%
+  mutate(porcentaje = n / sum(n)) %>%
+  ggplot(aes(x = reorder(purpose_grouped, -n), y = n)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = percent(porcentaje, accuracy = 1)), 
+            vjust = -0.5, 
+            size = 4) +
+  theme_minimal() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Frecuencias: Propósito del Crédito (Agrupado)",
+    x = "Propósito",
+    y = "Frecuencia"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10) # Ángulo 0 porque ahora hay pocas categorías
+  )
+```
+
+```{r echo=FALSE}
+# Variables tipo financieras
+vars_financieras <- c(
+  "purpose_grouped"
+)
+
+datos_long <- german %>%
+  pivot_longer(
+    cols = all_of(vars_financieras),
+    names_to = "variable",
+    values_to = "categoria"
+  )
+
+ggplot(datos_long,
+       aes(x = categoria,
+           fill = default)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ variable,
+             scales = "free_x",
+             ncol = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    title = "Propósito del crédito y default",
+    x = "",
+    y = "Porcentaje"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1,
+      size = 8
+    )
+  )
+```
+
+```{r include=FALSE}
+
+# Guardar resultados
+german_limpio <- german %>%
+  select(-purpose)
+write_csv(german_limpio, file = "datos_german_preparados.csv")
+```
