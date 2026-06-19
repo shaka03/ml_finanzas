@@ -447,7 +447,7 @@ A su vez, se encuentra que el número de datos faltantes en toda la base es igua
 sum(is.na(german))
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,fig.align='center'}
 # Diagnóstico inicial de faltantes
 
 naniar::vis_miss(german) + 
@@ -463,7 +463,7 @@ datos_num <- german %>% dplyr::select(where(is.numeric))
 ### Detección de valores atípicos mediante el criterio de Tukey
 Una vez se revisan los datos faltantes, se procede a realizar un análisis de anomalías. Para ello, usamos el *criterio Tukey*:
 
-```{r, include=FALSE}
+```{r, include=FALSE,fig.align='center'}
 out_tukey <- boxplot.stats(german$duration)$out
 out_tukey
 
@@ -472,7 +472,7 @@ id_tukey
 ```
 
 
-```{r, include=FALSE}
+```{r, include=FALSE, fig.align='center'}
 id_out_uni <- function(x, method = c("zscore", "tukey"), z_cut = 3) {
   method <- match.arg(method)
   
