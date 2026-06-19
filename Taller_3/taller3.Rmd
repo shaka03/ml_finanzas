@@ -1243,6 +1243,9 @@ ggplot(
     scales = "free_y",
     ncol = 3
   ) +
+  labs(
+    title = "Distribución de default en las variables numéricas"
+  ) +
   theme_minimal() 
 
 ```
