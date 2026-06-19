@@ -1,10 +1,33 @@
 ---
-title: 'Solución Taller 1: Preprocesamiento y visualización de datos
-UNIVERSIDAD DEL VALLE – FACULTAD DE INGENIERIA 
-Machine Leraning para Gestión Financiera'     
-subtitle: "Profesor: Ivan Mauricio Bermúdez Vera"
-author: "Estudiantes: Valeria Saldaña - Juan Chacón - Jhon Tascón"
-output: pdf_document
+title: "Solución Taller 1: Preprocesamiento y Visualización de Datos"
+subtitle: |
+  Universidad del Valle
+  
+  Facultad de Ingeniería
+  
+  Machine Learning para Gestión Financiera
+  
+  Profesor: Iván Mauricio Bermúdez Vera
+author: |
+  Estudiantes:
+  
+  Valeria Saldaña Benavides -
+  
+  Juan Sebastián Chacón Correa - 250
+  
+  Jhon Fernando Tascón Velasco -2500665
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    df_print: paged
+    
+header-includes:
+  - \usepackage{longtable}
+  - \usepackage[table]{xcolor}
+  - \usepackage{array}
+  - \usepackage{booktabs}
 ---
 
 ```{r setup, include=FALSE}
@@ -46,13 +69,15 @@ pacman::p_load(lubridate,
 
 ```
 
+**Introducción**
 
-Introducir...
+El análisis del riesgo crediticio es una herramienta fundamental para las entidades financieras, ya que permite evaluar la capacidad de pago de los solicitantes y reducir la probabilidad de incumplimiento. En este trabajo se utiliza el conjunto de datos German Credit, compuesto por información financiera, laboral y sociodemográfica de 1.000 clientes, junto con una variable objetivo (default) que clasifica su comportamiento crediticio como bueno (good) o malo (bad).
 
-## 0. Carga del conjunto de datos
+Con el fin de preparar la información para futuras tareas de modelado predictivo, se realizó un proceso de diagnóstico y preprocesamiento de datos, seguido de un análisis exploratorio que permitió caracterizar las variables del conjunto de datos e identificar patrones relevantes asociados al comportamiento crediticio de los clientes.
+
+## Carga del conjunto de datos
 
 El conjunto de datos German Credit presenta información sobre 1000 solicitantes de crédito. Cada variable en el conjunto permite una aproximación a las características financieras y socioeconómicas del potencial cliente a su vez que permite construir un análisis de estas variables con respecto a su comportamiento crediticio.
-
 ```{r echo=FALSE}
 german <- read.table("german.data", header = FALSE, sep = "")
 
@@ -63,7 +88,7 @@ print(head(german))
 
 Como se logra evidenciar en la escrtura anterior, hay registros que están codificados, además de que no se tienen el nombre de las columnas. En la siguiente sección, se realizará la limpieza y el preprocesamiento de los datos.
 
-## 1. Diagnóstico de calidad de datos 
+## Diagnóstico de calidad de datos 
 
 ```{r include=FALSE}
 #Se actualizan los nombres de las variables
@@ -78,6 +103,32 @@ names(german) <- c("checking_status", "duration",
 )
 
 ```
+Se asignaron nombres descriptivos a las 21 variables del conjunto de datos German Credit con el fin de facilitar su interpretación y análisis posterior.
+
+| Variable | Descripción |
+|-----------|-------------|
+| checking_status | Estado de la cuenta corriente |
+| duration | Duración del crédito (meses) |
+| credit_history | Historial crediticio |
+| purpose | Propósito del crédito |
+| credit_amount | Monto del crédito |
+| savings | Cuenta de ahorros / bonos |
+| employment | Antigüedad laboral |
+| installment_rate | Tasa de cuota respecto al ingreso disponible |
+| personal_status_sex | Estado civil y sexo |
+| other_debtors | Otros deudores o garantes |
+| residence_since | Tiempo de residencia actual |
+| property | Tipo de propiedad |
+| age | Edad |
+| other_installment_plans | Otros planes de pago |
+| housing | Tipo de vivienda |
+| existing_credits | Número de créditos existentes en este banco |
+| job | Ocupación |
+| people_liable | Número de personas a cargo |
+| telephone | Disponibilidad de teléfono |
+| foreign_worker | Trabajador extranjero |
+| default | Variable objetivo (Good / Bad) |
+
 
 Se inicia verificando la estructura general de los datos, en los que se presentan 1000 observaciones y 20 variables. A continuación se presentan los tipos de variables donde se identifican 13 variables tipo caracter y 7 variables numéricas:
 
@@ -86,6 +137,67 @@ str(german)
 
 ```
 Se  procede a convertir las variables categóricas a sus respectivas equivalencias denotadas en los atributos compartidos, a su vez que se convierte a formato factor:
+
+| Variable | Código original | Nueva categoría |
+|-----------|----------------|----------------|
+| checking_status | A11 | less_0 |
+| checking_status | A12 | 0_200 |
+| checking_status | A13 | greater_200 |
+| checking_status | A14 | no_account |
+| credit_history | A30 | no_credit/all_paid |
+| credit_history | A31 | all_paid |
+| credit_history | A32 | existing_paid |
+| credit_history | A33 | delay |
+| credit_history | A34 | critical/other |
+| purpose | A40 | car_new |
+| purpose | A41 | car_used |
+| purpose | A42 | furniture/equipment |
+| purpose | A43 | radio/TV |
+| purpose | A44 | domestic_appliances |
+| purpose | A45 | repairs |
+| purpose | A46 | education |
+| purpose | A47 | vacation |
+| purpose | A48 | retraining |
+| purpose | A49 | business |
+| purpose | A410 | others |
+| savings | A61 | less_100 |
+| savings | A62 | 100_500 |
+| savings | A63 | 500_1000 |
+| savings | A64 | greater_1000 |
+| savings | A65 | unknown |
+| employment | A71 | unemployed |
+| employment | A72 | less_1 |
+| employment | A73 | 1_4 |
+| employment | A74 | 4_7 |
+| employment | A75 | greater_7 |
+| personal_status_sex | A91 | male_divorced/separated |
+| personal_status_sex | A92 | female_divorced/separated/married |
+| personal_status_sex | A93 | male_single |
+| personal_status_sex | A94 | male_married |
+| personal_status_sex | A95 | female_single |
+| other_debtors | A101 | none |
+| other_debtors | A102 | co_applicant |
+| other_debtors | A103 | guarantor |
+| property | A121 | real_estate |
+| property | A122 | building_society_savings_agreement/life_insurance |
+| property | A123 | car_or_other |
+| property | A124 | unknown/no_property |
+| other_installment_plans | A141 | bank |
+| other_installment_plans | A142 | stores |
+| other_installment_plans | A143 | none |
+| housing | A151 | rent |
+| housing | A152 | own |
+| housing | A153 | for_free |
+| job | A171 | unemployed/unskilled |
+| job | A172 | unskilled_resident |
+| job | A173 | skilled/official |
+| job | A174 | management/self-employed/highly_qualified |
+| telephone | A191 | none |
+| telephone | A192 | yes |
+| foreign_worker | A201 | yes |
+| foreign_worker | A202 | no |
+| default | 1 | good |
+| default | 2 | bad |
 
 ```{r, include=FALSE}
 library(dplyr)
@@ -224,11 +336,47 @@ kable(
 )
 ```
 
-analizar...
+### Resumen estadístico de las variables
 
+El conjunto de datos *German Credit* está conformado por 1.000 registros y 21 variables, de las cuales 7 son numéricas y 14 categóricas. El análisis descriptivo inicial permite identificar características relevantes de la población estudiada y posibles patrones asociados al riesgo crediticio.
 
-Una vez realizado el resumen estadístico, se procede a verificar si los datos numéricos y categóricos cumplen con sus características de validación que se describen a continuación:
+#### Variables numéricas
 
+La duración de los créditos (`duration`) presenta una mediana de 18 meses y una media de 20,9 meses, lo que indica que la mayoría de los préstamos corresponden a compromisos financieros de corto y mediano plazo. Sin embargo, se observan créditos con duraciones de hasta 72 meses, evidenciando una dispersión considerable en esta variable.
+
+El monto del crédito (`credit_amount`) registra una media de 3.271 unidades monetarias y una mediana de 2.320. La diferencia entre ambas medidas sugiere una distribución asimétrica hacia la derecha, ocasionada por la presencia de créditos de alto valor que alcanzan montos de hasta 18.424 unidades monetarias.
+
+La edad de los solicitantes (`age`) oscila entre 19 y 75 años, con una media de 35,5 años y una mediana de 33 años. Esto indica que la mayor parte de los clientes corresponde a población económicamente activa en etapas tempranas y medias de su vida laboral.
+
+Las variables `installment_rate`, `residence_since`, `existing_credits` y `people_liable` presentan rangos relativamente reducidos, reflejando estructuras de información discretas y con baja variabilidad. En particular, la mayoría de los clientes posee un solo crédito activo en el banco y una sola persona dependiente económicamente.
+
+#### Variables categóricas
+
+Respecto al estado de la cuenta corriente (`checking_status`), la categoría más frecuente corresponde a clientes sin cuenta corriente (`no_account`), representando aproximadamente el 39 % de los registros. Esto indica que una proporción importante de solicitantes no posee este producto financiero.
+
+En el historial crediticio (`credit_history`), más de la mitad de los clientes (53 %) se ubica en la categoría `existing_paid`, correspondiente a créditos que han sido pagados correctamente hasta el momento. Adicionalmente, un 29,3 % pertenece a la categoría `critical_other`, lo que sugiere antecedentes financieros más complejos.
+
+En cuanto al propósito del crédito (`purpose`), predominan las solicitudes para adquisición de radio o televisión (28 %), vehículos nuevos (23,4 %) y muebles o equipamiento del hogar (18,1 %). Estas tres categorías concentran cerca del 70 % de los créditos otorgados.
+
+La variable de ahorro (`savings`) muestra que el 60,3 % de los clientes posee menos de 100 unidades monetarias ahorradas, mientras que únicamente el 4,8 % reporta ahorros superiores a 1.000 unidades. Esto evidencia una capacidad de ahorro limitada para una gran proporción de los solicitantes.
+
+En términos laborales (`employment`), la categoría más frecuente corresponde a personas con entre 1 y 4 años de antigüedad laboral (33,9 %), seguida por quienes tienen más de 7 años de experiencia laboral (25,3 %). Esto sugiere una población con relativa estabilidad laboral.
+
+Respecto a la vivienda (`housing`), el 71,3 % de los clientes reside en vivienda propia, mientras que el 17,9 % vive en arriendo. Este resultado puede interpretarse como un indicador indirecto de estabilidad económica.
+
+La ocupación (`job`) muestra una clara predominancia de trabajadores calificados u oficiales (`skilled_official`), quienes representan el 63 % de la muestra. Por el contrario, las categorías asociadas a desempleo o baja cualificación presentan una participación reducida.
+
+Finalmente, la variable objetivo (`default`) evidencia un desbalance entre clases: el 70 % de los clientes presenta un comportamiento crediticio bueno (`good`), mientras que el 30 % corresponde a clientes con comportamiento malo (`bad`). Este aspecto será importante en etapas posteriores de modelado predictivo, ya que podría influir en el desempeño de los algoritmos de clasificación.
+
+#### Hallazgos relevantes
+
+Los resultados muestran una población caracterizada principalmente por clientes con historial crediticio favorable, estabilidad laboral moderada, vivienda propia y montos de crédito relativamente bajos o medios. Sin embargo, se observa una importante concentración de solicitantes con bajos niveles de ahorro y una distribución asimétrica en el monto de los créditos, lo que sugiere la posible existencia de valores extremos. Asimismo, el desbalance de la variable objetivo constituye un aspecto relevante a considerar en futuros modelos de clasificación de riesgo crediticio.
+
+Posteriormente se definieron reglas de validación utilizando el paquete `validate` con el objetivo de verificar la consistencia lógica de las variables numéricas y categóricas del conjunto de datos.
+
+Para las variables numéricas se comprobó que atributos como la duración del crédito, monto del préstamo, edad del solicitante y número de créditos existentes presentaran valores positivos o no negativos según correspondiera. De igual forma, para las variables categóricas se verificó que cada observación perteneciera exclusivamente al conjunto de categorías válidas definidas durante el proceso de recodificación.
+
+Estas validaciones permitieron asegurar que los registros cumplen con las restricciones establecidas por la naturaleza de cada variable y que no existen valores fuera de rango o categorías inválidas que puedan afectar el análisis posterior.
 ```{r, include=FALSE}
 # Reglas de validación
 Rules <- validator(
@@ -299,7 +447,7 @@ A su vez, se encuentra que el número de datos faltantes en toda la base es igua
 sum(is.na(german))
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,fig.align='center'}
 # Diagnóstico inicial de faltantes
 
 naniar::vis_miss(german) + 
@@ -312,9 +460,10 @@ naniar::vis_miss(german) +
 datos_num <- german %>% dplyr::select(where(is.numeric))
 ```
 
+### Detección de valores atípicos mediante el criterio de Tukey
 Una vez se revisan los datos faltantes, se procede a realizar un análisis de anomalías. Para ello, usamos el *criterio Tukey*:
 
-```{r, include=FALSE}
+```{r, include=FALSE,fig.align='center'}
 out_tukey <- boxplot.stats(german$duration)$out
 out_tukey
 
@@ -323,7 +472,7 @@ id_tukey
 ```
 
 
-```{r, include=FALSE}
+```{r, include=FALSE, fig.align='center'}
 id_out_uni <- function(x, method = c("zscore", "tukey"), z_cut = 3) {
   method <- match.arg(method)
   
@@ -456,7 +605,20 @@ outliers_filas <- map_dfr(vars_num, function(v){
 outliers_filas
 ```
 
-Con base en los boxplots y el criterio Tukey... Sin embargo, a continuación se realiza los diagramas de dispersión de las variables numéricas y un análisis multivariado para evidenciar si hay algunas anomalías que son influyentes a nivel multivariable.
+
+Con el fin de identificar posibles anomalías en las variables numéricas, se aplicó el criterio de Tukey, el cual considera como valores atípicos aquellas observaciones que se encuentran por debajo de \(Q1 - 1.5 \times IQR\) o por encima de \(Q3 + 1.5 \times IQR\).
+
+Los resultados evidencian la presencia de valores atípicos en algunas variables del conjunto de datos. Las variables `duration` y `credit_amount` presentan 70 y 72 observaciones atípicas respectivamente, correspondientes al 7,0 % y 7,2 % de la muestra. Estos resultados sugieren la existencia de créditos con duraciones o montos significativamente superiores al comportamiento habitual de la población analizada.
+
+La variable `age` presenta 23 observaciones atípicas (2,3 %), asociadas principalmente a solicitantes de mayor edad. Sin embargo, dado que los valores observados se encuentran dentro de rangos plausibles para la población económicamente activa, no se consideran errores de registro.
+
+Por su parte, la variable `existing_credits` presenta únicamente 6 observaciones atípicas (0,6 %), lo que indica una baja presencia de clientes con un número inusualmente alto de créditos vigentes en la entidad financiera.
+
+La variable `people_liable` registra 155 observaciones atípicas (15,5 %), siendo la proporción más alta entre todas las variables analizadas. No obstante, este resultado debe interpretarse con cautela, ya que la variable es discreta y presenta una distribución altamente concentrada en el valor 1. Debido a que el rango intercuartílico (IQR) es igual a cero, cualquier observación diferente a dicho valor es identificada automáticamente como atípica por el criterio de Tukey. Por esta razón, estos registros no necesariamente representan anomalías reales.
+
+Las variables `installment_rate` y `residence_since` no presentan valores atípicos según el criterio aplicado, lo que indica una distribución relativamente homogénea dentro de los rangos esperados.
+
+En términos generales, los valores atípicos identificados corresponden a características válidas de ciertos clientes y no a errores evidentes de captura o digitación. Por esta razón, se decidió conservar dichas observaciones para el análisis exploratorio posterior, evitando la pérdida de información potencialmente relevante para la caracterización del riesgo crediticio.
 
 ```{r echo=FALSE, fig.width=12, fig.height=8}
 
@@ -544,10 +706,15 @@ kable(
   resumen_mult
 )
 ```
-Analizar y decir que, a pesar de que los métodos dicen que hay ciertas anomalías en los datos, estos no parecen ser errores, y en los scatterplots no se evidencian inconsistencias.
+Con el propósito de complementar la detección univariada de valores atípicos, se realizó un análisis multivariado sobre las variables numéricas del conjunto de datos. Inicialmente, la matriz de dispersión permitió examinar las relaciones existentes entre las variables y calcular los coeficientes de correlación de Pearson.
 
+Los resultados evidencian que la relación más importante se presenta entre la duración del crédito (*duration*) y el monto solicitado (*credit_amount*), con una correlación positiva moderada (r = 0.625), lo que indica que los créditos de mayor valor suelen asociarse con plazos de pago más extensos. Asimismo, se observan correlaciones positivas de menor magnitud entre la edad (*age*) y el tiempo de residencia (*residence_since*), así como entre la edad y el número de créditos existentes (*existing_credits*). En general, la mayoría de las variables presentan correlaciones débiles, lo que sugiere una baja dependencia lineal entre ellas.
 
-## 2. Análisis exploratorio ##
+Posteriormente, se aplicaron dos técnicas de detección de anomalías multivariadas: la Distancia de Mahalanobis y el algoritmo Local Outlier Factor (LOF). La primera identificó 35 observaciones con patrones significativamente alejados del comportamiento promedio de la población, mientras que el método LOF detectó 10 observaciones con características inusuales respecto a sus vecinos más cercanos.
+
+Si bien se identificaron registros potencialmente atípicos, estos corresponden a observaciones válidas dentro del contexto del negocio y no a errores de captura o inconsistencias en los datos. Por esta razón, se decidió conservarlos para las etapas posteriores del análisis, considerando que los perfiles extremos pueden aportar información relevante para la comprensión del riesgo crediticio y la construcción de futuros modelos de clasificación.
+
+## Análisis exploratorio
 
 
 ### Distribución de la variable objetivo (default) 
@@ -657,7 +824,9 @@ ggplot(datos_long, aes(x = "", y = valor)) +
   )
 ```
 
+Los estadísticos descriptivos permiten identificar una marcada heterogeneidad en las características financieras de los solicitantes. La duración de los créditos presenta una media de 20,9 meses y una mediana de 18 meses, lo que indica una ligera asimetría hacia créditos de mayor plazo. De manera similar, el monto del crédito exhibe una elevada dispersión (desviación estándar de 2.822,74 DM) y una diferencia considerable entre la media (3.271,26 DM) y la mediana (2.319,5 DM), sugiriendo la presencia de algunos créditos de valor significativamente superior al promedio. Esta característica también se evidencia en el gráfico de densidad, donde se observa una concentración importante de créditos de bajo monto y una cola alargada hacia valores altos.
 
+La edad de los solicitantes presenta una media de 35,55 años y una mediana de 33 años, lo que indica que la población analizada está compuesta principalmente por adultos jóvenes y de mediana edad. Por su parte, variables como la tasa de cuota (*installment_rate*), el tiempo de residencia (*residence_since*), el número de créditos existentes (*existing_credits*) y el número de personas a cargo (*people_liable*) muestran una variabilidad reducida debido a que sus valores se encuentran acotados dentro de un rango limitado. En particular, la variable *people_liable* se concentra casi exclusivamente en un solo dependiente, mientras que la mayoría de los clientes posee uno o dos créditos activos en la entidad financiera. En conjunto, los resultados evidencian distribuciones asimétricas en variables relacionadas con el nivel de endeudamiento, aspecto que deberá considerarse en las etapas posteriores del análisis y modelado.
 
 ### Análisis descriptivo de variables categóricas 
 
@@ -892,6 +1061,19 @@ german %>%
 
 ```
 
+El análisis de frecuencias permitió caracterizar el perfil general de los solicitantes de crédito incluidos en la base de datos *German Credit*. En relación con el estado de la cuenta corriente (*checking_status*), se observó que el 39,4% de los clientes no posee cuenta corriente, mientras que el 27,4% presenta saldos inferiores a cero y el 26,9% mantiene saldos entre 0 y 200 DM. Solamente el 6,3% dispone de saldos superiores a 200 DM, lo que sugiere que una proporción importante de los solicitantes presenta una capacidad financiera limitada.
+
+Respecto al historial crediticio (*credit_history*), la categoría predominante corresponde a clientes con créditos pagados oportunamente hasta el momento (*existing_paid*), representando el 53,0% de las observaciones. Asimismo, el 29,3% pertenece a la categoría de cuentas críticas u otros créditos existentes (*critical/other*), mientras que únicamente el 8,8% registra antecedentes de retrasos en pagos.
+
+En cuanto al propósito del crédito (*purpose*), los destinos más frecuentes fueron la adquisición de radio o televisión (28,0%), vehículos nuevos (23,4%) y muebles o equipamiento para el hogar (18,1%). Estos resultados indican que la mayoría de los créditos está orientada al financiamiento de bienes de consumo duradero.
+
+La variable de ahorro (*savings*) evidenció que el 60,3% de los solicitantes posee menos de 100 DM en ahorros, mientras que apenas el 4,8% cuenta con más de 1.000 DM. Este comportamiento sugiere una limitada capacidad de respaldo financiero para una proporción considerable de los clientes.
+
+En relación con la estabilidad laboral (*employment*), el 33,9% de los individuos registra entre uno y cuatro años de antigüedad laboral y el 25,3% acumula más de siete años de experiencia en su empleo actual. Por otra parte, solamente el 6,2% se encuentra desempleado.
+
+El análisis de las demás variables revela que la mayoría de los solicitantes son hombres solteros (*male_single*, 54,8%), no cuentan con otros deudores o garantes (*other_debtors*, 90,7%), poseen vivienda propia (*housing*, 71,3%) y desempeñan ocupaciones calificadas o cargos oficiales (*job*, 63,0%). Adicionalmente, el 96,3% corresponde a trabajadores extranjeros según la codificación original del conjunto de datos.
+
+Finalmente, la variable objetivo (*default*) presenta una distribución desbalanceada, donde el 70,0% de los registros corresponde a clientes clasificados con buen comportamiento crediticio (*good*) y el 30,0% restante a clientes con comportamiento desfavorable (*bad*). Esta diferencia deberá considerarse en etapas posteriores de modelado, ya que podría influir en el desempeño de los algoritmos de clasificación.
 
 ### Análisis bivariado y relación con variable target ###
 
@@ -937,6 +1119,7 @@ ggplot(datos_long,
   )
 ```
 
+Las variables financieras presentan una relación importante con la variable objetivo (*default*). El **estado de la cuenta corriente (checking_status)** es uno de los factores más discriminantes: los clientes sin cuenta corriente (*no_account*) registran aproximadamente un **88% de buenos pagadores**, mientras que aquellos con saldos negativos (*less_0*) presentan una distribución cercana al **50% de buenos y 50% de malos pagadores**, evidenciando un mayor riesgo crediticio. De manera similar, la variable **ahorros (savings)** muestra que los clientes con mayores niveles de ahorro (*greater_1000* y *500_1000*) alcanzan porcentajes de buen comportamiento superiores al 80%, mientras que quienes poseen menos de 100 unidades monetarias presentan una proporción significativamente mayor de incumplimiento. Respecto al **historial crediticio**, las categorías *critical_other* y *existing_paid* muestran desempeños favorables, mientras que los clientes con antecedentes de créditos totalmente pagados o sin historial previo (*all_paid* y *no_credit_all_paid*) registran mayores porcentajes de incumplimiento. Finalmente, algunos propósitos del crédito como *car_used*, *radio_tv* y *retraining* exhiben menores niveles de riesgo, mientras que categorías como *education*, *others* y *car_new* presentan proporciones relativamente más altas de clientes clasificados como *bad*.
 
 ```{r, echo=FALSE}
 
@@ -980,6 +1163,8 @@ ggplot(
     strip.text = element_text(face = "bold")
   )
 ```
+
+Las variables sociodemográficas muestran diferencias moderadas en la distribución del riesgo crediticio. En cuanto al **tipo de vivienda (housing)**, los clientes con vivienda propia presentan aproximadamente un **74% de buenos pagadores**, superando a quienes viven en arriendo o disponen de vivienda gratuita, donde el porcentaje de incumplimiento es mayor. Respecto al **estado civil y sexo (personal_status_sex)**, las diferencias observadas son relativamente pequeñas, aunque los hombres casados y solteros muestran una proporción ligeramente superior de clientes con buen comportamiento crediticio en comparación con otros grupos. Por otra parte, la variable **tipo de propiedad (property)** evidencia una asociación más marcada con el riesgo: los clientes propietarios de bienes raíces (*real_estate*) presentan cerca de un **78% de buenos pagadores**, mientras que aquellos clasificados como *unknown_no_property* registran el mayor porcentaje de incumplimiento (44%). Estos resultados sugieren que la posesión de activos constituye una señal positiva de solvencia financiera.
 
 
 ```{r, echo=FALSE}
@@ -1027,7 +1212,7 @@ ggplot(
   )
 ```
 
-
+Las características laborales también presentan patrones asociados al comportamiento crediticio. La **antigüedad laboral (employment)** muestra una relación positiva con el cumplimiento de las obligaciones financieras, ya que los clientes con entre cuatro y siete años de permanencia laboral alcanzan aproximadamente un **78% de buenos pagadores**, mientras que quienes tienen menos de un año de experiencia laboral presentan los niveles más altos de incumplimiento. En cuanto a la **ocupación (job)**, las diferencias son menos pronunciadas, aunque los trabajadores calificados y residentes permanentes presentan porcentajes ligeramente superiores de buen comportamiento crediticio. La variable **teléfono (telephone)** no evidencia diferencias relevantes entre categorías, lo que sugiere un bajo poder explicativo sobre el riesgo. Finalmente, aunque la variable **foreign_worker** muestra una diferencia considerable entre categorías, debe interpretarse con cautela debido al fuerte desbalance de la muestra, ya que más del 96% de los registros corresponden a trabajadores extranjeros. En conjunto, estos resultados indican que la estabilidad laboral parece ser un factor más relevante para explicar el comportamiento crediticio que la ocupación específica o la disponibilidad de teléfono.
 
 ```{r, echo=FALSE}
 
@@ -1119,7 +1304,7 @@ corrplot(matriz_corr,
 ```
 Anlizar...
 
-## 3. Preprocesamiento de datos ##
+## Preprocesamiento de datos ##
 
 Con base en el análisis exploratorio, se presenta una alta cardinalidad en las variable purpose. Para este caso, se agruparán sus categorías por su naturaleza de la siguiente manera:
 
@@ -1209,3 +1394,4 @@ german_limpio <- german %>%
   select(-purpose)
 write_csv(german_limpio, file = "datos_german_preparados.csv")
 ```
+
