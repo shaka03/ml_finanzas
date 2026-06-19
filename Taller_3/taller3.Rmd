@@ -1247,6 +1247,8 @@ ggplot(
 
 ```
 
+Los diagramas de violín permiten comparar la distribución de las variables numéricas entre los clientes clasificados como *good* y *bad*. Se observa que las diferencias más marcadas se presentan en las variables **duration** y **credit_amount**, donde los clientes con comportamiento crediticio desfavorable (*bad*) tienden a solicitar créditos de mayor duración y montos más elevados en comparación con los clientes clasificados como *good*. Este comportamiento sugiere que créditos más largos y de mayor cuantía podrían estar asociados con un mayor riesgo de incumplimiento. Por otra parte, variables como **age**, **existing_credits**, **people_liable** y **residence_since** muestran distribuciones muy similares entre ambos grupos, evidenciando un poder discriminatorio limitado. La variable **installment_rate** tampoco presenta diferencias sustanciales, aunque se aprecia una ligera concentración de clientes con incumplimiento en las categorías más altas de la tasa de cuota. En conjunto, los resultados indican que la duración y el monto del crédito son las variables numéricas con mayor capacidad para diferenciar entre buenos y malos pagadores.
+
 ```{r echo=FALSE, fig.width=12, fig.height=8, fig.align='center'}
 
 # Pairplot variables numéricas con target
@@ -1269,6 +1271,8 @@ ggpairs(german,
 theme_minimal()
 
 ```
+
+La matriz de dispersión permite evaluar simultáneamente la relación entre las variables numéricas y la separación entre las clases de la variable objetivo. En términos generales, se observa un amplio solapamiento entre los clientes *good* y *bad*, lo que indica que ninguna variable individual es suficiente para discriminar completamente el comportamiento crediticio. No obstante, se identifica una relación positiva moderada entre **duration** y **credit_amount**, donde créditos de mayor monto suelen estar asociados con plazos más extensos. Asimismo, los clientes con incumplimiento tienden a concentrarse con mayor frecuencia en las zonas correspondientes a montos y duraciones elevadas, reforzando los hallazgos observados en los diagramas de violín. Las demás variables presentan relaciones débiles o prácticamente inexistentes entre sí, y las distribuciones de ambas clases son muy similares. Estos resultados sugieren que la capacidad predictiva del modelo probablemente dependerá de la combinación simultánea de múltiples variables más que de una sola característica aislada.
 
 ```{r echo=FALSE, fig.align='center'}
 
@@ -1293,7 +1297,13 @@ corrplot(matriz_corr,
          diag = FALSE
 )
 ```
-Anlizar...
+La matriz de correlación evidencia que, en general, las variables numéricas del conjunto de datos presentan relaciones lineales débiles o moderadas, lo que sugiere una baja presencia de multicolinealidad. La asociación más fuerte se observa entre **duration** y **credit_amount** (*r = 0.62*), indicando que los créditos de mayor monto tienden a otorgarse con plazos más largos. Esta relación es consistente con la lógica financiera, ya que montos elevados suelen requerir períodos de amortización más extensos para mantener cuotas manejables para el cliente.
+
+Por otra parte, se identifica una correlación negativa moderada entre **credit_amount** e **installment_rate** (*r = -0.27*), lo que sugiere que los créditos de mayor cuantía tienden a estar asociados con tasas de cuota relativamente menores respecto al ingreso disponible. Asimismo, la variable **residence_since** presenta una correlación positiva moderada con **age** (*r = 0.27*), indicando que las personas de mayor edad tienden a acumular más tiempo de residencia en su vivienda actual.
+
+Las demás correlaciones son bajas, con coeficientes inferiores a 0.20 en valor absoluto. Entre ellas destacan las asociaciones positivas entre **age** y **existing_credits** (*r = 0.15*), **age** y **people_liable** (*r = 0.12*), así como entre **existing_credits** y **people_liable** (*r = 0.11*). Aunque estas relaciones son estadísticamente apreciables, su magnitud es reducida y no sugiere una dependencia fuerte entre las variables.
+
+En términos generales, los resultados indican que las variables numéricas aportan información complementaria y relativamente independiente al análisis del riesgo crediticio. La ausencia de correlaciones elevadas (superiores a 0.80) constituye un resultado favorable para etapas posteriores de modelado, ya que reduce el riesgo de problemas asociados a la multicolinealidad y permite que cada variable contribuya con información propia al proceso de clasificación del comportamiento crediticio.
 
 ## Preprocesamiento de datos ##
 
