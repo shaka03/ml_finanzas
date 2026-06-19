@@ -11,9 +11,9 @@ subtitle: |
 author: |
   Estudiantes:
   
-  Valeria Saldaña Benavides -
+  Valeria Saldaña Benavides - 2500
   
-  Juan Sebastián Chacón Correa - 250
+  Juan Sebastián Chacón Correa - 2500417
   
   Jhon Fernando Tascón Velasco -2500665
 output:
@@ -493,7 +493,7 @@ id_out_uni(german$credit_amount, method = "tukey")
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 vars_num <- c(
   "duration",
@@ -540,7 +540,7 @@ kable(
 ```
 
 
-```{r echo=FALSE}
+```{r echo=FALSE,fig.align='center'}
 
 datos_long <- german %>%
   pivot_longer(
@@ -570,7 +570,7 @@ ggplot(datos_long,
   )
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.align='center'}
 
 vars_num <- c(
   "duration",
@@ -620,7 +620,7 @@ Las variables `installment_rate` y `residence_since` no presentan valores atípi
 
 En términos generales, los valores atípicos identificados corresponden a características válidas de ciertos clientes y no a errores evidentes de captura o digitación. Por esta razón, se decidió conservar dichas observaciones para el análisis exploratorio posterior, evitando la pérdida de información potencialmente relevante para la caracterización del riesgo crediticio.
 
-```{r echo=FALSE, fig.width=12, fig.height=8}
+```{r echo=FALSE, fig.width=12, fig.height=8, fig.align='center'}
 
 # Tu vector de variables
 vars_num <- c(
@@ -641,7 +641,7 @@ ggpairs(german,
 )
 ```
 
-```{r echo=FALSE, fig.width=12, fig.height=8}
+```{r echo=FALSE, fig.width=12, fig.height=8, fig.align='center'}
 
 out_mult <- function(datos_num, k = 5, alpha = 0.01) {
   
@@ -720,7 +720,7 @@ Si bien se identificaron registros potencialmente atípicos, estos corresponden 
 ### Distribución de la variable objetivo (default) 
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 ggplot(german, aes(x = default)) +
   geom_bar(fill = "steelblue") +
   geom_text(aes(label = percent(after_stat(count) / sum(after_stat(count)))), 
@@ -744,7 +744,7 @@ ggplot(german, aes(x = default)) +
 ### Análisis descriptivo de variables cuantitativas
 
 Se presenta inicialmente los estadísticos descriptivos de las variables numéricas:
-```{r, include=FALSE}
+```{r, include=FALSE, fig.align='center'}
 
 vars_num <- c(
   "duration",
@@ -775,7 +775,7 @@ kable(
 ```
 
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.align='center'}
 vars_num <- c(
   "duration",
   "credit_amount",
@@ -830,7 +830,7 @@ La edad de los solicitantes presenta una media de 35,55 años y una mediana de 3
 
 ### Análisis descriptivo de variables categóricas 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 vars_cat <- c(
   "checking_status",
@@ -869,7 +869,7 @@ kable(
 ```
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 frecuencias_cat <- german %>%
   select(all_of(vars_cat)) %>%
   pivot_longer(
@@ -892,7 +892,7 @@ kable(
 
 A continuación se presentan las gráficas de barras para las variables categóricas asociadas a aspectos financieros del crédito:
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 vars_cat <- c(
   "checking_status",
@@ -945,7 +945,7 @@ german %>%
 
 Igualmente, se grafican las variables socioeconómicas de los solicitantes, lo cual también contribuye a la construcción de un perfil de riesgo:
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 vars_cat <- c(
   "personal_status_sex",
@@ -1003,7 +1003,7 @@ german %>%
 ```
 
 Finalmente se establecen las características asociadas al entorno laboral como una característica relevante del individuo ya que permitiría ser un medio de solvencia para respaldar al crédito:
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 vars_cat <- c(
   "employment",
@@ -1077,7 +1077,7 @@ Finalmente, la variable objetivo (*default*) presenta una distribución desbalan
 
 ### Análisis bivariado y relación con variable target ###
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 # Variables tipo financieras
 vars_financieras <- c(
@@ -1121,7 +1121,7 @@ ggplot(datos_long,
 
 Las variables financieras presentan una relación importante con la variable objetivo (*default*). El **estado de la cuenta corriente (checking_status)** es uno de los factores más discriminantes: los clientes sin cuenta corriente (*no_account*) registran aproximadamente un **88% de buenos pagadores**, mientras que aquellos con saldos negativos (*less_0*) presentan una distribución cercana al **50% de buenos y 50% de malos pagadores**, evidenciando un mayor riesgo crediticio. De manera similar, la variable **ahorros (savings)** muestra que los clientes con mayores niveles de ahorro (*greater_1000* y *500_1000*) alcanzan porcentajes de buen comportamiento superiores al 80%, mientras que quienes poseen menos de 100 unidades monetarias presentan una proporción significativamente mayor de incumplimiento. Respecto al **historial crediticio**, las categorías *critical_other* y *existing_paid* muestran desempeños favorables, mientras que los clientes con antecedentes de créditos totalmente pagados o sin historial previo (*all_paid* y *no_credit_all_paid*) registran mayores porcentajes de incumplimiento. Finalmente, algunos propósitos del crédito como *car_used*, *radio_tv* y *retraining* exhiben menores niveles de riesgo, mientras que categorías como *education*, *others* y *car_new* presentan proporciones relativamente más altas de clientes clasificados como *bad*.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 # Variables tipo categóricas
 vars_cat <- c(
@@ -1167,7 +1167,7 @@ ggplot(
 Las variables sociodemográficas muestran diferencias moderadas en la distribución del riesgo crediticio. En cuanto al **tipo de vivienda (housing)**, los clientes con vivienda propia presentan aproximadamente un **74% de buenos pagadores**, superando a quienes viven en arriendo o disponen de vivienda gratuita, donde el porcentaje de incumplimiento es mayor. Respecto al **estado civil y sexo (personal_status_sex)**, las diferencias observadas son relativamente pequeñas, aunque los hombres casados y solteros muestran una proporción ligeramente superior de clientes con buen comportamiento crediticio en comparación con otros grupos. Por otra parte, la variable **tipo de propiedad (property)** evidencia una asociación más marcada con el riesgo: los clientes propietarios de bienes raíces (*real_estate*) presentan cerca de un **78% de buenos pagadores**, mientras que aquellos clasificados como *unknown_no_property* registran el mayor porcentaje de incumplimiento (44%). Estos resultados sugieren que la posesión de activos constituye una señal positiva de solvencia financiera.
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 # Variables tipo laborales y demográficas
 
@@ -1214,7 +1214,7 @@ ggplot(
 
 Las características laborales también presentan patrones asociados al comportamiento crediticio. La **antigüedad laboral (employment)** muestra una relación positiva con el cumplimiento de las obligaciones financieras, ya que los clientes con entre cuatro y siete años de permanencia laboral alcanzan aproximadamente un **78% de buenos pagadores**, mientras que quienes tienen menos de un año de experiencia laboral presentan los niveles más altos de incumplimiento. En cuanto a la **ocupación (job)**, las diferencias son menos pronunciadas, aunque los trabajadores calificados y residentes permanentes presentan porcentajes ligeramente superiores de buen comportamiento crediticio. La variable **teléfono (telephone)** no evidencia diferencias relevantes entre categorías, lo que sugiere un bajo poder explicativo sobre el riesgo. Finalmente, aunque la variable **foreign_worker** muestra una diferencia considerable entre categorías, debe interpretarse con cautela debido al fuerte desbalance de la muestra, ya que más del 96% de los registros corresponden a trabajadores extranjeros. En conjunto, estos resultados indican que la estabilidad laboral parece ser un factor más relevante para explicar el comportamiento crediticio que la ocupación específica o la disponibilidad de teléfono.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center'}
 
 # Variables numéricas
 vars_num <- c(
@@ -1256,7 +1256,7 @@ ggplot(
 
 ```
 
-```{r echo=FALSE, fig.width=12, fig.height=8}
+```{r echo=FALSE, fig.width=12, fig.height=8, fig.align='center'}
 
 # Pairplot variables numéricas con target
 vars_num <- c(
@@ -1279,7 +1279,7 @@ theme_minimal()
 
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.align='center'}
 
 # Matriz de Correlación
 datos_num <- german[, vars_num]
@@ -1318,7 +1318,7 @@ Con base en el análisis exploratorio, se presenta una alta cardinalidad en las 
 
 A continuación, se presenta las agrupaciones y sus respectivos resultados:
 
-```{r include=FALSE}
+```{r include=FALSE, fig.align='center'}
 # Crear la nueva agrupación
 german <- german %>%
   mutate(purpose_grouped = case_when(
@@ -1329,7 +1329,7 @@ german <- german %>%
   ))
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.align='center'}
 # Gráfico de frecuencias para el propósito agrupado
 german %>%
   count(purpose_grouped) %>%
@@ -1351,7 +1351,7 @@ german %>%
   )
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE, fig.align='center'}
 # Variables tipo financieras
 vars_financieras <- c(
   "purpose_grouped"
@@ -1387,7 +1387,7 @@ ggplot(datos_long,
   )
 ```
 
-```{r include=FALSE}
+```{r include=FALSE, fig.align='center'}
 
 # Guardar resultados
 german_limpio <- german %>%
