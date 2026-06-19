@@ -69,7 +69,7 @@ pacman::p_load(lubridate,
 
 ```
 
-**Introducción**
+## **Introducción** ##
 
 El análisis del riesgo crediticio es una herramienta fundamental para las entidades financieras, ya que permite evaluar la capacidad de pago de los solicitantes y reducir la probabilidad de incumplimiento. En este trabajo se utiliza el conjunto de datos German Credit, compuesto por información financiera, laboral y sociodemográfica de 1.000 clientes, junto con una variable objetivo (default) que clasifica su comportamiento crediticio como bueno (good) o malo (bad).
 
@@ -86,7 +86,7 @@ print(head(german))
 
 ```
 
-Como se logra evidenciar en la escrtura anterior, hay registros que están codificados, además de que no se tienen el nombre de las columnas. En la siguiente sección, se realizará la limpieza y el preprocesamiento de los datos.
+Como se logra evidenciar en la estructura anterior, hay registros que están codificados, además de que no se tienen el nombre de las columnas. En la siguiente sección, se realizará la limpieza y el preprocesamiento de los datos.
 
 ## Diagnóstico de calidad de datos 
 
@@ -461,7 +461,7 @@ datos_num <- german %>% dplyr::select(where(is.numeric))
 ```
 
 ### Detección de valores atípicos mediante el criterio de Tukey
-Una vez se revisan los datos faltantes, se procede a realizar un análisis de anomalías. Para ello, usamos el *criterio Tukey*:
+Una vez se revisan los datos faltantes, se procede a realizar un análisis de anomalías. Para ello, se usa el *criterio Tukey*:
 
 ```{r, include=FALSE,fig.align='center'}
 out_tukey <- boxplot.stats(german$duration)$out
@@ -606,9 +606,7 @@ outliers_filas
 ```
 
 
-Con el fin de identificar posibles anomalías en las variables numéricas, se aplicó el criterio de Tukey, el cual considera como valores atípicos aquellas observaciones que se encuentran por debajo de \(Q1 - 1.5 \times IQR\) o por encima de \(Q3 + 1.5 \times IQR\).
-
-Los resultados evidencian la presencia de valores atípicos en algunas variables del conjunto de datos. Las variables `duration` y `credit_amount` presentan 70 y 72 observaciones atípicas respectivamente, correspondientes al 7,0 % y 7,2 % de la muestra. Estos resultados sugieren la existencia de créditos con duraciones o montos significativamente superiores al comportamiento habitual de la población analizada.
+Con base en el *criterio Tukey*, los resultados evidencian la presencia de valores atípicos en algunas variables del conjunto de datos. Las variables `duration` y `credit_amount` presentan 70 y 72 observaciones atípicas respectivamente, correspondientes al 7,0 % y 7,2 % de la muestra. Estos resultados sugieren la existencia de créditos con duraciones o montos significativamente superiores al comportamiento habitual de la población analizada.
 
 La variable `age` presenta 23 observaciones atípicas (2,3 %), asociadas principalmente a solicitantes de mayor edad. Sin embargo, dado que los valores observados se encuentran dentro de rangos plausibles para la población económicamente activa, no se consideran errores de registro.
 
@@ -617,8 +615,6 @@ Por su parte, la variable `existing_credits` presenta únicamente 6 observacione
 La variable `people_liable` registra 155 observaciones atípicas (15,5 %), siendo la proporción más alta entre todas las variables analizadas. No obstante, este resultado debe interpretarse con cautela, ya que la variable es discreta y presenta una distribución altamente concentrada en el valor 1. Debido a que el rango intercuartílico (IQR) es igual a cero, cualquier observación diferente a dicho valor es identificada automáticamente como atípica por el criterio de Tukey. Por esta razón, estos registros no necesariamente representan anomalías reales.
 
 Las variables `installment_rate` y `residence_since` no presentan valores atípicos según el criterio aplicado, lo que indica una distribución relativamente homogénea dentro de los rangos esperados.
-
-En términos generales, los valores atípicos identificados corresponden a características válidas de ciertos clientes y no a errores evidentes de captura o digitación. Por esta razón, se decidió conservar dichas observaciones para el análisis exploratorio posterior, evitando la pérdida de información potencialmente relevante para la caracterización del riesgo crediticio.
 
 ```{r echo=FALSE, fig.width=12, fig.height=8, fig.align='center'}
 
@@ -735,10 +731,7 @@ ggplot(german, aes(x = default)) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 ```
 
-
-
-
-
+La variable objetivo (*default*) presenta una distribución desbalanceada, donde el 70,0% de los registros corresponde a clientes clasificados con buen comportamiento crediticio (*good*) y el 30,0% restante a clientes con comportamiento desfavorable (*bad*). Esta diferencia deberá considerarse en etapas posteriores de modelado, ya que podría influir en el desempeño de los algoritmos de clasificación.
 
 
 ### Análisis descriptivo de variables cuantitativas
@@ -1072,8 +1065,6 @@ La variable de ahorro (*savings*) evidenció que el 60,3% de los solicitantes po
 En relación con la estabilidad laboral (*employment*), el 33,9% de los individuos registra entre uno y cuatro años de antigüedad laboral y el 25,3% acumula más de siete años de experiencia en su empleo actual. Por otra parte, solamente el 6,2% se encuentra desempleado.
 
 El análisis de las demás variables revela que la mayoría de los solicitantes son hombres solteros (*male_single*, 54,8%), no cuentan con otros deudores o garantes (*other_debtors*, 90,7%), poseen vivienda propia (*housing*, 71,3%) y desempeñan ocupaciones calificadas o cargos oficiales (*job*, 63,0%). Adicionalmente, el 96,3% corresponde a trabajadores extranjeros según la codificación original del conjunto de datos.
-
-Finalmente, la variable objetivo (*default*) presenta una distribución desbalanceada, donde el 70,0% de los registros corresponde a clientes clasificados con buen comportamiento crediticio (*good*) y el 30,0% restante a clientes con comportamiento desfavorable (*bad*). Esta diferencia deberá considerarse en etapas posteriores de modelado, ya que podría influir en el desempeño de los algoritmos de clasificación.
 
 ### Análisis bivariado y relación con variable target ###
 
