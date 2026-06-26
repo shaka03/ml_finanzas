@@ -1,0 +1,1304 @@
+---
+title: "Solución Taller 2: Construcción de clasificador"
+subtitle: |
+  Universidad del Valle
+  
+  Facultad de Ingeniería
+  
+  Machine Learning para Gestión Financiera
+  
+  Profesor: Iván Mauricio Bermúdez Vera
+author: |
+  Estudiantes:
+  
+  Valeria Saldaña Benavides - 2500106
+  
+  Juan Sebastián Chacón Correa - 2500417
+  
+  Jhon Fernando Tascón Velasco -2500665
+date: "\\today"
+linkcolor: blue
+urlcolor: blue
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    df_print: paged
+  
+header-includes:
+  - \usepackage{longtable}
+  - \usepackage[table]{xcolor}
+  - \usepackage{array}
+  - \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+## **1 Introducción** ##
+
+Poner Intro...
+
+```{r librerias, include=FALSE}
+if (!require("pacman")) install.packages("pacman")
+
+pacman::p_load(
+  here,
+  dplyr,
+  tidyr,
+  ggplot2,
+  scales,
+  naniar,
+  gtsummary,
+  caret,
+  pROC,
+  car,
+  mltools,
+  rpart,
+  rpart.plot,
+  knitr,
+  kableExtra,
+  caret,
+  ranger,
+  scales,
+  ROSE,
+  rsample,
+  recipes,
+  themis
+)
+```
+
+## **2 Carga de datos**
+
+El conjunto de datos German Credit presenta información sobre 1000 solicitantes de crédito. Cada variable en el conjunto permite una aproximación a las características financieras y socioeconómicas del potencial cliente a su vez que permite construir un análisis de estas variables con respecto a su comportamiento crediticio. Previamente, el dataset fue procesado y limpiado para su posterior uso en la construcción de los clasificadores.
+
+```{r lectura-datos, echo=FALSE}
+# Carga de datos
+data_german <- read.table(
+  "datos_german_preparados.csv",
+  header = TRUE,
+  sep=","
+)
+```
+
+### Revisión del conjunto de datos
+
+```{r nombres-variables, echo=FALSE}
+names(data_german)
+```
+
+```{r estructura-datos, echo=FALSE}
+str(data_german)
+```
+
+Explicar...
+
+### División en train y test
+
+Mencionar que la división la hicimos 80-20
+
+```{r division-datos, echo=FALSE}
+set.seed(123)
+
+# 1. Crear el objeto de división (80% train, 20% test)
+# El argumento 'strata' asegura que la proporción de clases se mantenga en ambos sets
+split_obj <- initial_split(data_german, prop = 0.8, strata = default)
+
+# 2. Extraer los conjuntos de datos usando las funciones del paquete
+data_train <- training(split_obj)
+data_test  <- testing(split_obj)
+
+records_train <- nrow(data_train)
+records_test <- nrow(data_test)
+
+print(records_train)
+print(records_test)
+```
+
+### Preparación de variables
+
+Se hace la conversión a factores para las variables `default`, `checking_status`, `credit_history`, `savings`, `employment`, `personal_status_sex`, `other_debtors`, `property`, `other_installment_plans` `housing`, `job`, `telephone`, `foreign_worker`, `purpose_grouped`
+
+```{r convertir-factores, echo=FALSE}
+vars_factor <- c(
+  "default", "checking_status", "credit_history", "savings", "employment",
+  "personal_status_sex", "other_debtors", "property", "other_installment_plans",
+  "housing", "job", "telephone", "foreign_worker", "purpose_grouped"
+)
+
+convertir_factores <- function(datos) {
+  datos %>%
+    mutate(across(all_of(vars_factor), as.factor)) %>%
+    mutate(default = factor(default, levels = c("bad", "good")))
+}
+
+data_german  <- convertir_factores(data_german)
+data_train  <- convertir_factores(data_train)
+data_test   <- convertir_factores(data_test)
+```
+
+```{r echo=FALSE}
+str(data_german)
+```
+
+El nivel `"bad"` se considera la **clase positiva**, porque representa el evento de interés: presentar default. explicar un poco más
+
+### Distribución de la variable respuesta
+
+```{r verificar-default, echo=FALSE}
+print("Cantidad registros de la variable default")
+levels(data_german$default)
+table(data_german$default)
+```
+
+```{r distribucion-default, fig.height=5, echo=FALSE}
+color <- c("#1C5A99", "#EAC0BD")
+
+tabla_default <- data_german %>%
+  count(default) %>%
+  mutate(
+    porcentaje = n / sum(n),
+    etiqueta = paste0(n, "\n", scales::percent(porcentaje, accuracy = 0.1))
+  )
+
+ggplot(tabla_default,
+       aes(x = default, y = n, fill = default)) +
+  geom_col(alpha = 0.75, width = 0.5) +
+  geom_text(
+    aes(y = n / 2, label = etiqueta),
+    size = 5,
+    fontface = "bold",
+    color = "black"
+  ) +
+  scale_fill_manual(values = c(
+    "good" = color[1],
+    "bad" = color[2]
+  )) +
+  labs(
+    title = "Distribución de la variable respuesta",
+    x = "Default",
+    y = "Frecuencia"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold")
+  )
+```
+
+Hay desbalance, se deberá balancear para los modelos de ML. Explicar...
+
+### Balanceo de los datos
+
+Explicar... Se usó undersampling y subsampling (both) y SMOTE.
+``` {r balanceo de datos, echo=FALSE}
+print("Balanceo usando subsampling y undersampling (both):")
+# Both
+data_train_bal_both <- ROSE::ovun.sample(
+  default ~ .,
+  data = data_train,
+  method = "both",
+  p = 0.5
+)$data
+
+table(data_train_bal_both$default)
+
+```
+
+
+```{r echo=FALSE}
+print("Balanceo usando SMOTE")
+# SMOTE
+receta_smote <- recipe(default ~ ., data = data_train) %>%
+  step_smotenc(default, over_ratio = 1)
+data_train_bal_smote <- prep(receta_smote) %>% 
+  bake(new_data = NULL)
+
+table(data_train_bal_smote$default)
+```
+
+## **3 Regresión logística**
+
+Explicar
+
+### Modelo saturado
+
+El modelo saturado incluye todas las variables disponibles como predictoras.
+
+```{r modelo-saturado, echo=FALSE}
+modelo_sat <- glm(default ~ ., family = binomial, data = data_train)
+
+summary(modelo_sat)
+```
+
+Explciar los resultados...
+
+### Selección de variables
+
+Como estrategia inicial, se aplica selección backward usando el criterio AIC.
+
+```{r modelo-backward, echo=FALSE}
+modelo_step <- stats::step(modelo_sat, direction = "backward", trace = FALSE)
+summary(modelo_step)
+```
+
+El procedimiento backward parte del modelo con todas las variables y elimina progresivamente aquellas que no aportan suficiente información según el criterio AIC.
+
+Este procedimiento debe entenderse como una ayuda exploratoria, no como una regla automática definitiva. La selección final también debe considerar criterios estadísticos, interpretabilidad y sentido financiero. Explicar...
+
+### Evaluación del modelo reducido
+
+#### Significancia global de variables
+
+```{r anova-modelo-step, ECHO=FALSE}
+car::Anova(modelo_step)
+```
+
+Esta prueba evalúa la contribución de cada variable al modelo, considerando el resto de variables incluidas. Explicar
+
+#### Multicolinealidad
+
+```{r vif-modelo-step, fig.height=5, echo=FALSE}
+vif_step <- round(car::vif(modelo_step), 2)
+
+barplot(
+  sort(vif_step),
+  cex.names = 0.7,
+  col = ifelse(sort(vif_step) > 4, "red", "gray70"),
+  main = "Factor de Inflación de Varianza",
+  ylab = "VIF",
+  las = 2
+)
+abline(h = 4, col = "red", lty = 2)
+```
+
+El VIF permite detectar posibles problemas de multicolinealidad. Valores altos indican que una variable puede estar fuertemente relacionada con otras variables explicativas, lo que dificulta la interpretación individual de los coeficientes. Explicar... (Al parecer no hay multicloinealidad, VIF < 4)
+
+### Modelo final propuesto
+
+A partir del análisis anterior se ajusta un modelo final más parsimonioso. De acuerdo con lo anterior, age y duration son los menos significativos, especialmente age, podriamos quitarlo. Las variables que se seleccionan son: `checking_status`, `duration`, `credit_history`, `credit_amount`, `savings`, `installment_rate`, `personal_status_sex`, `other_debtors`, `foreign_worker`
+
+```{r formula-modelo}
+
+formula_rl <- default ~ checking_status +  duration +  credit_history +  credit_amount + savings + installment_rate +  personal_status_sex + other_debtors +  foreign_worker
+
+```
+
+
+```{r modelo-rl-final, echo=FALSE}
+modelo_rl <- glm(
+  formula_rl,
+  family = binomial,
+  data = data_train
+)
+
+summary(modelo_rl)
+```
+
+Explicar...
+
+### Significancia de variables del modelo final
+
+```{r anova-modelo-final , echo=FALSE}
+car::Anova(modelo_rl)
+```
+
+Explicar...
+
+### Multicolinealidad del modelo final
+
+```{r vif-modelo-final, fig.height=5, echo=FALSE}
+vif_final <- round(car::vif(modelo_rl), 2)
+
+barplot(
+  sort(vif_final),
+  cex.names = 0.7,
+  col = ifelse(sort(vif_final) > 4, "red", "gray70"),
+  main = "Factor de Inflación de Varianza - Modelo final",
+  ylab = "VIF",
+  las = 2
+)
+abline(h = 4, col = "red", lty = 2)
+```
+
+Explicar...
+
+### Comparación mediante razón de verosimilitud
+
+#### Modelo final versus modelo saturado
+
+```{r test-lr-saturado, echo=FALSE}
+anova(modelo_rl, modelo_sat, test = "Chisq")
+```
+
+Esta prueba permite evaluar si el modelo saturado mejora significativamente el ajuste respecto al modelo final. Si la diferencia no es significativa, se prefiere el modelo más simple. Explicar, con base en p-value al parecer la diferencia entre modelos no es significativa, por lo que el modelo final sería mejor por principio de parsimonia...
+
+#### Modelo final versus modelo nulo
+
+```{r test-lr-nulo, echo=FALSE}
+modelo_nulo <- glm(
+  default ~ 1,
+  family = binomial,
+  data = data_train
+)
+
+anova(modelo_nulo, modelo_rl, test = "Chisq")
+```
+
+Esta prueba compara el modelo final contra un modelo sin variables explicativas. Un resultado significativo indica que el conjunto de predictores mejora la explicación del default. Explciar... para este caso si es significativa la diferencia, por o que el modelo final es mejor que el modelo nulo
+
+### Interpretación de parámetros
+
+En regresión logística, los coeficientes se interpretan en términos de log-odds. Para facilitar la interpretación, se calculan los **odds ratios** mediante la transformación exponencial de los coeficientes.
+
+```{r funcion-odds-ratio, echo=FALSE}
+interpretar_parametros <- function(modelo) {
+  tabla_coef <- cbind(
+    Coeficiente = coef(modelo),
+    confint(modelo, level = 0.95)
+  )
+  
+  tabla_or <- exp(tabla_coef)
+  
+  list(
+    Coeficientes = round(tabla_coef, 3),
+    Odds_Ratio = round(tabla_or, 3)
+  )
+}
+
+interpretar_parametros(modelo_rl)
+```
+
+Los Odds Ratio permiten cuantificar cómo cambia el riesgo de incumplimiento ante cambios en las variables explicativas. Valores mayores a 1 indican factores asociados a un mayor riesgo, mientras que valores menores a 1 indican factores protectores frente al incumplimiento. Sin embargo, siempre deben interpretarse junto con sus intervalos de confianza para evaluar la significancia estadística de los efectos observados. En resumen:
+
+
+* OR > 1: aumenta la probabilidad de incumplimiento (default = Si).
+* OR < 1: disminuye la probabilidad de incumplimiento.
+* OR = 1: no tiene efecto.
+* Un efecto suele considerarse estadísticamente significativo cuando el IC95% del OR no contiene el valor 1.
+
+Explicar...
+
+### Evaluación de desempeño
+
+La regresión logística no genera directamente una clasificación, sino una probabilidad estimada de pertenecer a la clase positiva.
+
+```{r funciones-evaluacion, echo=FALSE}
+
+evaluar_modelo <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
+  prob <- predict(modelo, newdata = datos, type = "response")
+  pred <- factor(ifelse(prob > pc, "good", "bad"), levels = c("good", "bad"))
+  ref  <- factor(datos$default, levels = c("good", "bad"))
+  
+  cm <- caret::confusionMatrix(
+    pred,
+    ref,
+    positive = "bad",
+    mode = "everything"
+  )
+  
+  roc_obj <- pROC::roc(ref, prob, levels = c("good", "bad"), direction = ">", quiet = TRUE)
+  
+  tibble(
+    Modelo = nombre_modelo,
+    Conjunto = conjunto,
+    Punto_corte = pc,
+    Accuracy = as.numeric(cm$overall["Accuracy"]),
+    Kappa = as.numeric(cm$overall["Kappa"]),
+    Sensitivity = as.numeric(cm$byClass["Sensitivity"]),
+    Specificity = as.numeric(cm$byClass["Specificity"]),
+    Precision = as.numeric(cm$byClass["Precision"]),
+    F1 = as.numeric(cm$byClass["F1"]),
+    Balanced_Accuracy = as.numeric(cm$byClass["Balanced Accuracy"]),
+    AUC = as.numeric(pROC::auc(roc_obj)),
+    MCC = as.numeric(mltools::mcc(preds = pred, actuals = ref))
+  )
+}
+
+```
+
+### Curva ROC y AUC
+```{r probabilidades, echo=FALSE}
+
+# Predicción probabilidades
+score_rl_tr <- predict(modelo_rl)
+
+# Con esta trnsformación los score se convierten en probabilidades
+#prob = exp(Score)/(1+exp(Score))                  
+
+prob_rl_tr  <- predict(modelo_rl, type = "response")
+
+print("Resumen del score:")
+summary(score_rl_tr)
+```
+
+Explicar...
+
+```{r echo=FALSE}
+print("Resumen probabilidades datos de entrenamiento:")
+summary(prob_rl_tr)
+
+ggplot(data.frame(prob_rl_tr),
+       aes(prob_rl_tr)) +
+  geom_density()+
+  labs(x = "Probabilidad estimada de default") +
+  theme_bw()
+```
+
+Explicar...
+```{r roC-auc, echo=FALSE}
+
+roc_rl_tr <- pROC::roc(
+  response = data_train$default,
+  predictor = prob_rl_tr,
+  levels = c("good", "bad"),
+  direction = ">",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_tr,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - Regresión logística - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r prediccion-probabilidades, echo=FALSE}
+prob_orig_train <- predict(modelo_rl, newdata = data_train, type = "response")
+
+roc_orig_train <- pROC::roc(data_train$default, prob_orig_train,
+                            levels = c("good", "bad"), direction = ">", quiet = TRUE)
+
+pc_orig <- as.numeric(pROC::coords(
+  roc_orig_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+))
+```
+
+```{r echo=FALSE}
+resultados_opt <- bind_rows(
+  evaluar_modelo(modelo_rl, data_train, "RL original", "Train original", pc = pc_orig),
+  evaluar_modelo(modelo_rl, data_test, "RL original", "Test", pc = pc_orig)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de modelos con puntos de corte óptimos (RL original = ",
+      round(pc_orig,3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+### Distribución de probabilidades estimadas datos de entrenamiento
+
+```{r distribucion-probabilidades, fig.height=6, echo=FALSE}
+
+coords_best <- pROC::coords(
+  roc_rl_tr,
+  x = "best",
+  best.method = "youden",
+  ret = c("threshold", "sensitivity", "specificity")
+)
+
+with(data_train, {
+  d_si <- density(prob_rl_tr[default == "bad"])
+  d_no <- density(prob_rl_tr[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rl_tr),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, 0.25, as.numeric(coords_best["threshold"]))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Este gráfico muestra cómo se distribuyen las probabilidades estimadas para los clientes con y sin default. Si las distribuciones se separan claramente, el modelo tiene mayor capacidad discriminante.
+
+### Curva ROC-AUC y distribución de probabilidades en datos de prueba
+
+```{r roc-auc-test, fig.height=6, echo=FALSE}
+
+prob_rl_te <- predict(modelo_rl, newdata = data_test, type = "response")
+
+pred_rl_te <- factor(
+  ifelse(prob_rl_te > pc_orig, "good", "bad"),
+  levels = levels(data_test$default)
+)
+
+roc_rl_te <- pROC::roc(
+  response = data_test$default,
+  predictor = prob_rl_te,
+  levels = c("good", "bad"),
+  direction = ">",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_te,
+  legacy.axes = TRUE,
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC en datos de prueba - Regresión logístics"
+)
+```
+
+Explicar ...
+
+```{r distribucion-probabilidades-test, fig.height=6, echo=FALSE}
+
+with(data_test, {
+  d_si <- density(prob_rl_te[default == "bad"])
+  d_no <- density(prob_rl_te[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rl_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, 0.25, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+## **4 Regresión logística con datos balanceados - Método both**
+```{r modelo-rl-balanceado, echo=FALSE}
+
+data_train_bal_both <- convertir_factores(data_train_bal_both)
+
+modelo_rl_bal_both <- glm(
+  formula_rl,
+  family = binomial,
+  data = data_train_bal_both #datos balanceados
+)
+
+summary(modelo_rl_bal_both)
+
+```
+
+Explicar...
+
+```{r interpretacion-rl-both, echo=FALSE}
+interpretar_parametros(modelo_rl_bal_both)
+```
+
+Explicar...
+
+```{r punto-corte-roc-rl-both, echo=FALSE}
+
+prob_bal_both_train  <- predict(modelo_rl_bal_both,  newdata = data_train_bal_both, type = "response")
+
+roc_bal_both_train <- pROC::roc(data_train_bal_both$default, prob_bal_both_train,
+                           levels = c("good", "bad"), direction = ">", quiet = TRUE)
+
+pc_bal_both <- as.numeric(pROC::coords(
+  roc_bal_both_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+))
+
+roc_rl_tr <- pROC::roc(
+  response = data_train_bal_both$default,
+  predictor = prob_bal_both_train,
+  levels = c("good", "bad"),
+  direction = ">",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_tr,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - Regresión logística (both) - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r, echo=FALSE}
+
+resultados_opt <- bind_rows(
+  evaluar_modelo(modelo_rl_bal_both, data_train_bal_both, "RL balanceado (both)", "Train balanceado", pc = pc_bal_both),
+  evaluar_modelo(modelo_rl_bal_both, data_test, "RL balanceado (both)", "Test", pc = pc_bal_both)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de modelos con puntos de corte óptimos (RL balanceado (both) = ",
+      round(pc_bal_both,3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+## **5 Regresión logística con datos balanceados - Método SMOTE**
+```{r modelo-rl-balanceado-smote, echo=FALSE}
+
+data_train_bal_smote <- convertir_factores(data_train_bal_smote)
+
+modelo_rl_bal_smote <- glm(
+  formula_rl,
+  family = binomial,
+  data = data_train_bal_smote #datos balanceados
+)
+
+summary(modelo_rl_bal_smote)
+
+```
+
+Explicar...
+
+```{r interpretacion-rl-smote, echo=FALSE}
+interpretar_parametros(modelo_rl_bal_smote)
+```
+
+```{r punto-corte-roc-rl-smote, echo=FALSE}
+
+prob_bal_smote_train  <- predict(modelo_rl_bal_smote,  newdata = data_train_bal_smote, type = "response")
+
+roc_bal_smote_train <- pROC::roc(data_train_bal_smote$default, prob_bal_smote_train,
+                           levels = c("good", "bad"), direction = ">", quiet = TRUE)
+
+pc_bal_smote <- as.numeric(pROC::coords(
+  roc_bal_smote_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+))
+
+roc_rl_tr <- pROC::roc(
+  response = data_train_bal_smote$default,
+  predictor = prob_bal_smote_train,
+  levels = c("good", "bad"),
+  direction = ">",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_tr,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - Regresión logística (SMOTE) - Datos de entrenamiento"
+)
+```
+
+```{r, echo=FALSE}
+
+resultados_opt <- bind_rows(
+  evaluar_modelo(modelo_rl_bal_smote, data_train_bal_both, "RL balanceado (SMOTE)", "Train balanceado", pc = pc_bal_smote),
+  evaluar_modelo(modelo_rl_bal_smote, data_test, "RL balanceado (SMOTE)", "Test", pc = pc_bal_smote)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de modelos con puntos de corte óptimos (RL balanceado (SMOTE) = ",
+      round(pc_bal_both,3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+## **6 Árbol de decisión**
+
+Explicar...
+```{r tree-original, echo=FALSE}
+
+set.seed(123)
+
+modelo_tree_orig_full <- rpart::rpart(
+  formula = default ~ .,
+  data = data_train,
+  method = "class",
+  control = rpart.control(
+    cp = 0.001,
+    minsplit = 20, # Mínimo de observaciones a medir
+    xval = 10 # Validación cruzada
+  )
+)
+
+printcp(modelo_tree_orig_full)
+```
+
+Explicar...
+
+```{r, echo=FALSE}
+rpart.plot(modelo_tree_orig_full)
+```
+
+Explicar...
+
+### Poda del árbol
+
+```{r poda-original, echo=FALSE}
+cp_orig_tree <- modelo_tree_orig_full$cptable[
+  which.min(modelo_tree_orig_full$cptable[, "xerror"]),
+  "CP"
+]
+
+cp_orig_tree
+
+modelo_tree_orig <- prune(
+  modelo_tree_orig_full,
+  cp = cp_orig_tree
+)
+```
+
+```{r grafico-tree-original, fig.width=9, fig.height=6, echo=FALSE}
+rpart.plot(
+  modelo_tree_orig,
+  type = 2,
+  extra = 104,
+  fallen.leaves = TRUE,
+  main = "Árbol de clasificación - Datos originales"
+)
+```
+
+Explicar...
+
+### Importancia de variables
+
+```{r importancia-variables-orig, echo=FALSE}
+imp_orig <- modelo_tree_orig$variable.importance
+
+tabla_imp <- bind_rows(
+  tibble(Variable = names(imp_orig), Importancia = as.numeric(imp_orig), Modelo = "TREE original"),
+) %>%
+  filter(!is.na(Variable)) %>%
+  group_by(Modelo) %>%
+  mutate(Aporte = Importancia / sum(Importancia)) %>%
+  ungroup()
+
+tabla_imp %>%
+  arrange(Modelo, desc(Aporte)) %>%
+  group_by(Modelo) %>%
+  slice_head(n = 10) %>%
+  mutate(Aporte = round(Aporte, 3)) %>%
+  kable(caption = "Principales variables según importancia relativa") %>%
+  kable_styling(full_width = FALSE)
+```
+
+```{r grafico-importancia-orig, echo=FALSE, fig.height=6, fig.width=9}
+tabla_imp %>%
+  group_by(Modelo) %>%
+  slice_max(Aporte, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(Variable, Aporte), y = Aporte, fill = Modelo)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~Modelo, scales = "free_y") +
+  labs(
+    title = "Importancia relativa de variables",
+    x = "Variable",
+    y = "Aporte relativo"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Explicar...
+
+### Evaluación de desempeño
+
+```{r funcion-evaluacion-tree, echo=FALSE}
+evaluar_tree <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
+  
+  prob <- predict(modelo, newdata = datos, type = "prob")[, "bad"]
+  
+  pred <- factor(
+    ifelse(prob > pc, "bad", "good"),
+    levels = c("good", "bad")
+  )
+  
+  ref <- factor(datos$default, levels = c("good", "bad"))
+  
+  cm <- caret::confusionMatrix(
+    pred,
+    ref,
+    positive = "bad",
+    mode = "everything"
+  )
+  
+  roc_obj <- pROC::roc(
+    ref,
+    prob,
+    levels = c("good", "bad"),
+    direction = "<",
+    quiet = TRUE
+  )
+  
+  tibble(
+    Modelo = nombre_modelo,
+    Conjunto = conjunto,
+    Punto_corte = pc,
+    Accuracy = as.numeric(cm$overall["Accuracy"]),
+    Kappa = as.numeric(cm$overall["Kappa"]),
+    Sensitivity = as.numeric(cm$byClass["Sensitivity"]),
+    Specificity = as.numeric(cm$byClass["Specificity"]),
+    Precision = as.numeric(cm$byClass["Precision"]),
+    F1 = as.numeric(cm$byClass["F1"]),
+    Balanced_Accuracy = as.numeric(cm$byClass["Balanced Accuracy"]),
+    AUC = as.numeric(pROC::auc(roc_obj)),
+    MCC = as.numeric(mltools::mcc(preds = pred, actuals = ref))
+  )
+}
+```
+
+```{r punto-corte-roc, echo=FALSE}
+prob_orig_train <- predict(modelo_tree_orig, newdata = data_train, type = "prob")[, "bad"]
+
+roc_orig_train <- pROC::roc(
+  data_train$default,
+  prob_orig_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  quiet = TRUE
+)
+
+pc_orig <- pROC::coords(
+  roc_orig_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+)[[1]][1] %>% as.numeric()
+
+tibble(
+  Modelo = c("TREE original"),
+  Punto_corte_optimo = c(pc_orig)
+) %>%
+  mutate(Punto_corte_optimo = round(Punto_corte_optimo, 3)) %>%
+  kable(caption = "Puntos de corte óptimos estimados en entrenamiento") %>%
+  kable_styling(full_width = FALSE)
+
+pROC::plot.roc(
+  roc_orig_train,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - TREE original - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r evaluacion-opt-orig, echo=FALSE}
+resultados_opt <- bind_rows(
+  evaluar_tree(modelo_tree_orig, data_train, "TREE original", "Train original", pc = pc_orig),
+  evaluar_tree(modelo_tree_orig, data_test, "TREE original", "Test", pc = pc_orig)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de árboles con puntos de corte óptimos (TREE original = ",
+      round(pc_orig, 3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+```{r distribucion-probabilidades-orig, fig.height=6, echo=FALSE}
+
+prob_tree_te <- predict(modelo_tree_orig, newdata = data_test, type = "prob")
+
+with(data_test, {
+  d_si <- density(prob_tree_te[, "bad"])
+  d_no <- density(prob_tree_te[, "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_tree_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Explicar...
+
+## **7 Random Forest**
+
+Explicar...
+
+```{r rf-original, echo=FALSE}
+set.seed(123)
+
+p <- ncol(data_train) - 1
+
+modelo_rf_orig <- ranger::ranger(
+  default ~ .,
+  data = data_train,
+  probability = TRUE,
+  num.trees = 500,
+  mtry = floor(sqrt(p)),
+  min.node.size = 10,
+  importance = "impurity",
+  seed = 123
+)
+
+modelo_rf_orig
+```
+
+Explicar (ajustar hiperparámetros) y OOB...
+
+```{r importancia-variables-rf, echo=FALSE}
+imp_orig <- modelo_rf_orig$variable.importance
+
+tabla_imp <- bind_rows(
+  tibble(Variable = names(imp_orig), Importancia = as.numeric(imp_orig), Modelo = "RF original")
+) %>%
+  filter(!is.na(Variable)) %>%
+  group_by(Modelo) %>%
+  mutate(Aporte = Importancia / sum(Importancia)) %>%
+  ungroup()
+
+tabla_imp %>%
+  arrange(Modelo, desc(Aporte)) %>%
+  group_by(Modelo) %>%
+  slice_head(n = 10) %>%
+  mutate(Aporte = round(Aporte, 3)) %>%
+  kable(caption = "Principales variables según importancia relativa") %>%
+  kable_styling(full_width = FALSE)
+```
+
+```{r grafico-importancia-rf, echo=FALSE, fig.height=6, fig.width=9}
+tabla_imp %>%
+  group_by(Modelo) %>%
+  slice_max(Aporte, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(Variable, Aporte), y = Aporte, fill = Modelo)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~Modelo, scales = "free_y") +
+  labs(
+    title = "Importancia relativa de variables",
+    x = "Variable",
+    y = "Aporte relativo"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Explicar...
+
+### Evaluación de desempeño
+
+```{r funcion-evaluacion-rf, echo=FALSE}
+predecir_rf <- function(modelo, datos) {
+  pred <- predict(modelo, data = datos)$predictions
+  as.numeric(pred[, "bad"])
+}
+
+evaluar_rf <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
+  
+  prob <- predecir_rf(modelo, datos)
+  
+  pred <- factor(
+    ifelse(prob > pc, "bad", "good"),
+    levels = c("good", "bad")
+  )
+  
+  ref <- factor(datos$default, levels = c("good", "bad"))
+  
+  cm <- caret::confusionMatrix(
+    pred,
+    ref,
+    positive = "bad",
+    mode = "everything"
+  )
+  
+  roc_obj <- pROC::roc(
+    ref,
+    prob,
+    levels = c("good", "bad"),
+    direction = "<",
+    quiet = TRUE
+  )
+  
+  tibble(
+    Modelo = nombre_modelo,
+    Conjunto = conjunto,
+    Punto_corte = pc,
+    Accuracy = as.numeric(cm$overall["Accuracy"]),
+    Kappa = as.numeric(cm$overall["Kappa"]),
+    Sensitivity = as.numeric(cm$byClass["Sensitivity"]),
+    Specificity = as.numeric(cm$byClass["Specificity"]),
+    Precision = as.numeric(cm$byClass["Precision"]),
+    F1 = as.numeric(cm$byClass["F1"]),
+    Balanced_Accuracy = as.numeric(cm$byClass["Balanced Accuracy"]),
+    AUC = as.numeric(pROC::auc(roc_obj)),
+    MCC = as.numeric(mltools::mcc(preds = pred, actuals = ref))
+  )
+}
+```
+
+```{r punto-corte-roc-rf, echo=FALSE}
+prob_orig_train <- predecir_rf(modelo_rf_orig, data_train)
+
+roc_orig_train <- pROC::roc(
+  data_train$default,
+  prob_orig_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  quiet = TRUE
+)
+
+pc_orig <- pROC::coords(
+  roc_orig_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+)[[1]][1] %>% as.numeric()
+
+tibble(
+  Modelo = c("RF original"),
+  Punto_corte_optimo = c(pc_orig)
+) %>%
+  mutate(Punto_corte_optimo = round(Punto_corte_optimo, 3)) %>%
+  kable(caption = "Puntos de corte óptimos estimados en entrenamiento") %>%
+  kable_styling(full_width = FALSE)
+
+pROC::plot.roc(
+  roc_orig_train,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - RF original - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r evaluacion-opt-rf, echo=FALSE}
+resultados_opt <- bind_rows(
+  evaluar_rf(modelo_rf_orig, data_train, "RF original", "Train original", pc = pc_orig),
+  evaluar_rf(modelo_rf_orig, data_test, "RF original", "Test", pc = pc_orig)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de Random Forest con puntos de corte óptimos (RF original = ",
+      round(pc_orig, 3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+```{r distribucion-probabilidades-rf, fig.height=6, echo=FALSE}
+
+prob_rf_te <- pred <- predict(modelo_rf_orig, data = data_test)$predictions
+
+with(data_test, {
+  d_si <- density(prob_rf_te[, "bad"])
+  d_no <- density(prob_rf_te[, "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rf_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Explicar...
