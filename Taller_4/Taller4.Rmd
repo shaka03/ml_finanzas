@@ -136,7 +136,7 @@ vars_factor <- c(
 convertir_factores <- function(datos) {
   datos %>%
     mutate(across(all_of(vars_factor), as.factor)) %>%
-    mutate(default = factor(default, levels = c("bad", "good")))
+    mutate(default = factor(default, levels = c("good", "bad")))
 }
 
 data_german  <- convertir_factores(data_german)
@@ -394,7 +394,7 @@ La regresión logística no genera directamente una clasificación, sino una pro
 
 evaluar_modelo <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
   prob <- predict(modelo, newdata = datos, type = "response")
-  pred <- factor(ifelse(prob > pc, "good", "bad"), levels = c("good", "bad"))
+  pred <- factor(ifelse(prob > pc, "bad", "good"), levels = c("good", "bad"))
   ref  <- factor(datos$default, levels = c("good", "bad"))
   
   cm <- caret::confusionMatrix(
@@ -404,7 +404,7 @@ evaluar_modelo <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
     mode = "everything"
   )
   
-  roc_obj <- pROC::roc(ref, prob, levels = c("good", "bad"), direction = ">", quiet = TRUE)
+  roc_obj <- pROC::roc(ref, prob, levels = c("good", "bad"), direction = "<", quiet = TRUE)
   
   tibble(
     Modelo = nombre_modelo,
@@ -430,7 +430,7 @@ evaluar_modelo <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
 # Predicción probabilidades
 score_rl_tr <- predict(modelo_rl)
 
-# Con esta trnsformación los score se convierten en probabilidades
+# Con esta transformación los score se convierten en probabilidades
 #prob = exp(Score)/(1+exp(Score))                  
 
 prob_rl_tr  <- predict(modelo_rl, type = "response")
@@ -459,7 +459,7 @@ roc_rl_tr <- pROC::roc(
   response = data_train$default,
   predictor = prob_rl_tr,
   levels = c("good", "bad"),
-  direction = ">",
+  direction = "<",
   auc = TRUE,
   ci = TRUE
 )
@@ -481,7 +481,7 @@ Explicar...
 prob_orig_train <- predict(modelo_rl, newdata = data_train, type = "response")
 
 roc_orig_train <- pROC::roc(data_train$default, prob_orig_train,
-                            levels = c("good", "bad"), direction = ">", quiet = TRUE)
+                            levels = c("good", "bad"), direction = "<", quiet = TRUE)
 
 pc_orig <- as.numeric(pROC::coords(
   roc_orig_train,
@@ -585,7 +585,7 @@ roc_rl_te <- pROC::roc(
   response = data_test$default,
   predictor = prob_rl_te,
   levels = c("good", "bad"),
-  direction = ">",
+  direction = "<",
   auc = TRUE,
   ci = TRUE
 )
@@ -637,8 +637,6 @@ with(data_test, {
 ## **4 Regresión logística con datos balanceados - Método both**
 ```{r modelo-rl-balanceado, echo=FALSE}
 
-data_train_bal_both <- convertir_factores(data_train_bal_both)
-
 modelo_rl_bal_both <- glm(
   formula_rl,
   family = binomial,
@@ -662,7 +660,7 @@ Explicar...
 prob_bal_both_train  <- predict(modelo_rl_bal_both,  newdata = data_train_bal_both, type = "response")
 
 roc_bal_both_train <- pROC::roc(data_train_bal_both$default, prob_bal_both_train,
-                           levels = c("good", "bad"), direction = ">", quiet = TRUE)
+                           levels = c("good", "bad"), direction = "<", quiet = TRUE)
 
 pc_bal_both <- as.numeric(pROC::coords(
   roc_bal_both_train,
@@ -675,7 +673,7 @@ roc_rl_tr <- pROC::roc(
   response = data_train_bal_both$default,
   predictor = prob_bal_both_train,
   levels = c("good", "bad"),
-  direction = ">",
+  direction = "<",
   auc = TRUE,
   ci = TRUE
 )
@@ -733,8 +731,6 @@ Explicar...
 ## **5 Regresión logística con datos balanceados - Método SMOTE**
 ```{r modelo-rl-balanceado-smote, echo=FALSE}
 
-data_train_bal_smote <- convertir_factores(data_train_bal_smote)
-
 modelo_rl_bal_smote <- glm(
   formula_rl,
   family = binomial,
@@ -756,7 +752,7 @@ interpretar_parametros(modelo_rl_bal_smote)
 prob_bal_smote_train  <- predict(modelo_rl_bal_smote,  newdata = data_train_bal_smote, type = "response")
 
 roc_bal_smote_train <- pROC::roc(data_train_bal_smote$default, prob_bal_smote_train,
-                           levels = c("good", "bad"), direction = ">", quiet = TRUE)
+                           levels = c("good", "bad"), direction = "<", quiet = TRUE)
 
 pc_bal_smote <- as.numeric(pROC::coords(
   roc_bal_smote_train,
@@ -769,7 +765,7 @@ roc_rl_tr <- pROC::roc(
   response = data_train_bal_smote$default,
   predictor = prob_bal_smote_train,
   levels = c("good", "bad"),
-  direction = ">",
+  direction = "<",
   auc = TRUE,
   ci = TRUE
 )
@@ -1042,11 +1038,11 @@ Explicar...
 
 ```{r distribucion-probabilidades-orig, fig.height=6, echo=FALSE}
 
-prob_tree_te <- predict(modelo_tree_orig, newdata = data_test, type = "prob")
+prob_tree_te <- predict(modelo_tree_orig, newdata = data_test, type = "prob")[, "bad"]
 
 with(data_test, {
-  d_si <- density(prob_tree_te[, "bad"])
-  d_no <- density(prob_tree_te[, "good"])
+  d_si <- density(prob_tree_te[default == "bad"])
+  d_no <- density(prob_tree_te[default == "good"])
   
   plot(
     NULL,
@@ -1269,11 +1265,11 @@ Explicar...
 
 ```{r distribucion-probabilidades-rf, fig.height=6, echo=FALSE}
 
-prob_rf_te <- pred <- predict(modelo_rf_orig, data = data_test)$predictions
+prob_rf_te <- pred <- predict(modelo_rf_orig, data = data_test)$predictions[, "bad"]
 
 with(data_test, {
-  d_si <- density(prob_rf_te[, "bad"])
-  d_no <- density(prob_rf_te[, "good"])
+  d_si <- density(prob_rf_te[default == "bad"])
+  d_no <- density(prob_rf_te[default == "good"])
   
   plot(
     NULL,

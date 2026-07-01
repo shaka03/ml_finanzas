@@ -1116,7 +1116,218 @@ with(data_test, {
 
 Explicar...
 
-## **7 Random Forest**
+## **7 Árbol de decisión con datos balanceados - SMOTE**
+
+```{r tree-smote, echo=FALSE}
+
+set.seed(123)
+
+modelo_tree_smote_full <- rpart::rpart(
+  formula = default ~ .,
+  data = data_train_bal_smote,
+  method = "class",
+  control = rpart.control(
+    cp = 0.001,
+    minsplit = 20, # Mínimo de observaciones a medir
+    xval = 10 # Validación cruzada
+  )
+)
+
+printcp(modelo_tree_smote_full)
+```
+
+Explicar...
+
+```{r, echo=FALSE}
+rpart.plot(modelo_tree_smote_full)
+```
+
+Explicar...
+
+### Poda del árbol
+
+```{r poda-smote, echo=FALSE}
+cp_smote_tree <- modelo_tree_smote_full$cptable[
+  which.min(modelo_tree_smote_full$cptable[, "xerror"]),
+  "CP"
+]
+
+cp_smote_tree
+
+modelo_tree_smote <- prune(
+  modelo_tree_smote_full,
+  cp = cp_smote_tree
+)
+```
+
+```{r grafico-tree-smote, fig.width=9, fig.height=6, echo=FALSE}
+rpart.plot(
+  modelo_tree_smote,
+  type = 2,
+  extra = 104,
+  fallen.leaves = TRUE,
+  main = "Árbol de clasificación - Datos balanceados con SMOPTE"
+)
+```
+
+Explicar...
+
+### Importancia de variables
+
+```{r importancia-variables-smote, echo=FALSE}
+imp_smote <- modelo_tree_smote$variable.importance
+
+tabla_imp <- bind_rows(
+  tibble(Variable = names(imp_smote), Importancia = as.numeric(imp_smote), Modelo = "TREE SMOTE"),
+) %>%
+  filter(!is.na(Variable)) %>%
+  group_by(Modelo) %>%
+  mutate(Aporte = Importancia / sum(Importancia)) %>%
+  ungroup()
+
+tabla_imp %>%
+  arrange(Modelo, desc(Aporte)) %>%
+  group_by(Modelo) %>%
+  slice_head(n = 10) %>%
+  mutate(Aporte = round(Aporte, 3)) %>%
+  kable(caption = "Principales variables según importancia relativa") %>%
+  kable_styling(full_width = FALSE)
+```
+
+```{r grafico-importancia-smote, echo=FALSE, fig.height=6, fig.width=9}
+tabla_imp %>%
+  group_by(Modelo) %>%
+  slice_max(Aporte, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(Variable, Aporte), y = Aporte, fill = Modelo)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~Modelo, scales = "free_y") +
+  labs(
+    title = "Importancia relativa de variables",
+    x = "Variable",
+    y = "Aporte relativo"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Explicar...
+
+### Evaluación de desempeño
+
+```{r punto-corte-roc-smote, echo=FALSE}
+prob_smote_train <- predict(modelo_tree_smote, newdata = data_train_bal_smote, type = "prob")[, "bad"]
+
+roc_smote_train <- pROC::roc(
+  data_train_bal_smote$default,
+  prob_smote_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  quiet = TRUE
+)
+
+pc_smote <- pROC::coords(
+  roc_smote_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+)[[1]][1] %>% as.numeric()
+
+tibble(
+  Modelo = c("TREE SMOTE"),
+  Punto_corte_optimo = c(pc_smote)
+) %>%
+  mutate(Punto_corte_optimo = round(Punto_corte_optimo, 3)) %>%
+  kable(caption = "Puntos de corte óptimos estimados en entrenamiento") %>%
+  kable_styling(full_width = FALSE)
+
+pROC::plot.roc(
+  roc_smote_train,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - TREE SMOTE - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r evaluacion-opt-smote, echo=FALSE}
+resultados_opt_smote <- bind_rows(
+  evaluar_tree(modelo_tree_smote, data_train_bal_smote, "TREE SMOTE", "Train SMOTE", pc = pc_smote),
+  evaluar_tree(modelo_tree_smote, data_test, "TREE SMOTE", "Test", pc = pc_smote)
+)
+
+resultados_opt_smote %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de árboles con puntos de corte óptimos (TREE SMOTE = ",
+      round(pc_smote, 3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+```{r distribucion-probabilidades-smote, fig.height=6, echo=FALSE}
+
+prob_tree_te <- predict(modelo_tree_smote, newdata = data_test, type = "prob")[, "bad"]
+
+with(data_test, {
+  d_si <- density(prob_tree_te[default == "bad"])
+  d_no <- density(prob_tree_te[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_tree_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, as.numeric(pc_smote))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Explicar...
+
+## **8 Random Forest**
 
 Explicar...
 
@@ -1309,7 +1520,7 @@ Explicar...
 
 ```{r distribucion-probabilidades-rf, fig.height=6, echo=FALSE}
 
-prob_rf_te <- pred <- predict(modelo_rf_orig, data = data_test)$predictions[, "bad"]
+prob_rf_te <- predict(modelo_rf_orig, data = data_test)$predictions[, "bad"]
 
 with(data_test, {
   d_si <- density(prob_rf_te[default == "bad"])
@@ -1328,6 +1539,184 @@ with(data_test, {
   lines(d_si, col = color[2], lwd = 2)
   
   pc_option <- c(0.50, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Explicar...
+
+## **9 Random Forest con datos balanceados - SMOTE**
+
+Explicar...
+
+```{r rf-smote, echo=FALSE}
+set.seed(123)
+
+p <- ncol(data_train_bal_smote) - 1
+
+modelo_rf_smote <- ranger::ranger(
+  default ~ .,
+  data = data_train_bal_smote,
+  probability = TRUE,
+  num.trees = 500,
+  mtry = floor(sqrt(p)),
+  min.node.size = 10,
+  importance = "impurity",
+  seed = 123
+)
+
+modelo_rf_smote
+```
+
+Explicar (ajustar hiperparámetros) y OOB...
+
+```{r importancia-variables-rf-smote, echo=FALSE}
+imp_smote <- modelo_rf_smote$variable.importance
+
+tabla_imp <- bind_rows(
+  tibble(Variable = names(imp_smote), Importancia = as.numeric(imp_smote), Modelo = "RF SMOTE")
+) %>%
+  filter(!is.na(Variable)) %>%
+  group_by(Modelo) %>%
+  mutate(Aporte = Importancia / sum(Importancia)) %>%
+  ungroup()
+
+tabla_imp %>%
+  arrange(Modelo, desc(Aporte)) %>%
+  group_by(Modelo) %>%
+  slice_head(n = 10) %>%
+  mutate(Aporte = round(Aporte, 3)) %>%
+  kable(caption = "Principales variables según importancia relativa") %>%
+  kable_styling(full_width = FALSE)
+```
+
+```{r grafico-importancia-rf-smote, echo=FALSE, fig.height=6, fig.width=9}
+tabla_imp %>%
+  group_by(Modelo) %>%
+  slice_max(Aporte, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(Variable, Aporte), y = Aporte, fill = Modelo)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~Modelo, scales = "free_y") +
+  labs(
+    title = "Importancia relativa de variables",
+    x = "Variable",
+    y = "Aporte relativo"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Explicar...
+
+### Evaluación de desempeño
+
+```{r punto-corte-roc-rf-smote, echo=FALSE}
+prob_smote_train <- predecir_rf(modelo_rf_smote, data_train_bal_smote)
+
+roc_smote_train <- pROC::roc(
+  data_train_bal_smote$default,
+  prob_smote_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  quiet = TRUE
+)
+
+pc_smote <- pROC::coords(
+  roc_smote_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+)[[1]][1] %>% as.numeric()
+
+tibble(
+  Modelo = c("RF SMOTE"),
+  Punto_corte_optimo = c(pc_smote)
+) %>%
+  mutate(Punto_corte_optimo = round(Punto_corte_optimo, 3)) %>%
+  kable(caption = "Puntos de corte óptimos estimados en entrenamiento") %>%
+  kable_styling(full_width = FALSE)
+
+pROC::plot.roc(
+  roc_smote_train,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - RF SMOTE - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r evaluacion-opt-rf-smote, echo=FALSE}
+resultados_smote <- bind_rows(
+  evaluar_rf(modelo_rf_smote, data_train_bal_smote, "RF SMOTE", "Train SMOTE", pc = pc_smote),
+  evaluar_rf(modelo_rf_smote, data_test, "RF SMOTE", "Test", pc = pc_smote)
+)
+
+resultados_smote %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de Random Forest con puntos de corte óptimos (RF SMOTE = ",
+      round(pc_smote, 3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+```{r distribucion-probabilidades-rf-smote, fig.height=6, echo=FALSE}
+
+prob_rf_te <- predict(modelo_rf_smote, data = data_test)$predictions[, "bad"]
+
+with(data_test, {
+  d_si <- density(prob_rf_te[default == "bad"])
+  d_no <- density(prob_rf_te[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rf_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, as.numeric(pc_smote))
   abline(v = pc_option, col = "red", lty = 2)
   text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
   

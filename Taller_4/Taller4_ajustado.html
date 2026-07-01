@@ -61,19 +61,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="Taller4_files/libs/clipboard/clipboard.min.js"></script>
-<script src="Taller4_files/libs/quarto-html/quarto.js" type="module"></script>
-<script src="Taller4_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="Taller4_files/libs/quarto-html/popper.min.js"></script>
-<script src="Taller4_files/libs/quarto-html/tippy.umd.min.js"></script>
-<script src="Taller4_files/libs/quarto-html/anchor.min.js"></script>
-<link href="Taller4_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="Taller4_files/libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="Taller4_files/libs/bootstrap/bootstrap.min.js"></script>
-<link href="Taller4_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="Taller4_files/libs/bootstrap/bootstrap-2fa0653a0d985ba504061a9710e50fd5.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
-<script src="Taller4_files/libs/kePrint-0.0.1/kePrint.js"></script>
-<link href="Taller4_files/libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+<script src="Taller4_ajustado_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Taller4_ajustado_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="Taller4_ajustado_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="Taller4_ajustado_files/libs/quarto-html/popper.min.js"></script>
+<script src="Taller4_ajustado_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Taller4_ajustado_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Taller4_ajustado_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Taller4_ajustado_files/libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Taller4_ajustado_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Taller4_ajustado_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Taller4_ajustado_files/libs/bootstrap/bootstrap-2fa0653a0d985ba504061a9710e50fd5.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="Taller4_ajustado_files/libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="Taller4_ajustado_files/libs/lightable-0.0.1/lightable.css" rel="stylesheet">
 </head><body class="fullcontent quarto-light">\usepackage{longtable}
 \usepackage[table]{xcolor}
 \usepackage{array}
@@ -125,7 +125,7 @@ Profesor: Iván Mauricio Bermúdez Vera</p>
 
 <section id="introducción" class="level2">
 <h2 class="anchored" data-anchor-id="introducción"><strong>1 Introducción</strong></h2>
-<p>Poner Intro…</p>
+<p>La predicción del comportamiento crediticio de los clientes resulta fundamental para las entidades prestadoras de dinero dado que pueden exponerse a un posible riesgo de impago que finalmente repercuta negativamente en el rendimiento económico de la institución. Considerando lo anterior, es necesario establecer modelos de clasificación que permitan generar una aproximación empírica sobre las características de los clientes que pueden ser relevantes para un posible impago. Así, a continuación se presenta la construcción y análisis de tres modelos clasificadores que permiten predecir el comportamiento crediticio de los clientes, considerando la variable respuesta <code>default</code> como la variable de interés. Los modelos a evaluar son: regresión logística, árbol de decisión y random forest.</p>
 </section>
 <section id="carga-de-datos" class="level2">
 <h2 class="anchored" data-anchor-id="carga-de-datos"><strong>2 Carga de datos</strong></h2>
@@ -173,11 +173,11 @@ Profesor: Iván Mauricio Bermúdez Vera</p>
  $ purpose_grouped        : chr  "Home" "Home" "Investment/Development" "Home" ...</code></pre>
 </div>
 </div>
-<p>Explicar…</p>
+<p>El cojunto de datos tratado se encuentra compuesto por 21 variables de las cuales 1 de ellas es la variable respuesta <code>default</code> y 20 posibles variables explicativas. De estas 20 variables, 13 deben adaptarse a un formato tipo factor para denotar adecuadamente sus categóricas y 7 son numéricas.</p>
 </section>
 <section id="división-en-train-y-test" class="level3">
 <h3 class="anchored" data-anchor-id="división-en-train-y-test">División en train y test</h3>
-<p>Mencionar que la división la hicimos 80-20</p>
+<p>El conjunto de datos se divide en 80% train y 20% test, siendo estas particiones las usualmente utilizadas en problemas de clasificación. La división se realiza de manera estratificada para asegurar que la proporción de clases se mantenga en ambos conjuntos. Así, 800 de los datos permiten establecer el entrenamiento de los modelos y 200 datos permiten evaluar el desempeño de los clasificadores.</p>
 <div class="cell" data-layout-align="center">
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 800</code></pre>
@@ -216,7 +216,7 @@ Profesor: Iván Mauricio Bermúdez Vera</p>
  $ purpose_grouped        : Factor w/ 4 levels "Home","Investment/Development",..: 1 1 2 1 4 2 1 4 1 4 ...</code></pre>
 </div>
 </div>
-<p>El nivel <code>"bad"</code> se considera la <strong>clase positiva</strong>, porque representa el evento de interés: presentar default. explicar un poco más</p>
+<p>Se implementan las variables en factores que permitirán analizar características tales como calidad y características del empleo, tenencia de posibles colaterales y variables con características de tipo financieras que puedan dar señales sobre el comportamiento crediticio del individuo solicitante como por ejemplo la duración del mismo, el monto concedido, su historial crediticio etc. Finalmente, el nivel <code>"bad"</code> se considera la <strong>clase positiva</strong>, porque representa el evento de interés: presentar default. Esta variable se analizará junto a un conjunto seleccionado de variables explicativas que permitirá establecer potencialmente qué clientes podrían caer en impago, dando insumos a la institución financiera para tomar decisiones sobre el manejo de los créditos asignados así como también las consideraciones que deberían tener en cuenta a futuro.</p>
 </section>
 <section id="distribución-de-la-variable-respuesta" class="level3">
 <h3 class="anchored" data-anchor-id="distribución-de-la-variable-respuesta">Distribución de la variable respuesta</h3>
@@ -237,16 +237,16 @@ good  bad
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/distribucion-default-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-default-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>Hay desbalance, se deberá balancear para los modelos de ML. Explicar…</p>
+<p>En primer lugar, se analiza la variable dependiente y se encuentra que en los datos predomina el buen compotamiento en cuanto a los pagos, abarcando este el 70% de la muestra y dejando solo el 30% de los datos como registros de clientes con dificultades para realizar los pagos acordados. Dadas las anteriores proporciones, es necesario aplicar técnicas que permitan balancear la información, ya que de no hacerlo, modelos de machine learning como Random Forest y Árboles de Clasificación podrían tener tendencia a sesgarse al momento de configurar sus nodos, favoreciendo a la clase mayoritaria y limitando la identificación adecuada de la minoritaria. Para el modelo de Regresión Logística el impacto puede atenuarse un poco más al tener estrategias como la ponderación de clases o el ajuste del umbral de clasificación, sin embargo, para este ejercicio las técnicas de balanceo se aplicarán sobre los datos y se mantendrá de este modo para la especificación de los modelos.</p>
 </section>
 <section id="balanceo-de-los-datos" class="level3">
 <h3 class="anchored" data-anchor-id="balanceo-de-los-datos">Balanceo de los datos</h3>
-<p>Explicar… Se usó undersampling y subsampling (both) y SMOTE.</p>
+<p>Para iniciar con el balanceo de las clases se implementó undersampling y subsampling conjuntamente. Esto permite reducir el número de observaciones en la clase mayoritaria que en este caso hace referencia al buen comportamiento en cuanto a los pagos, al mismo tiempo que se aumentan la información de la clase minoritaria. La proporción deseada para ambas clases debería rondar en el 50%, obteniendo así un conjunto balanceado. Así, se obtienen los siguientes resultados:</p>
 <div class="cell" data-layout-align="center">
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "Balanceo usando subsampling y undersampling (both):"</code></pre>
@@ -257,6 +257,7 @@ good  bad
  397  403 </code></pre>
 </div>
 </div>
+<p>También se implementa la técnica de balanceo SMOTE para la generación de nuevos datos sintéticos que permitirán aumentar a la clase minoritaria (impago). Particularmente, se busca que la clase bad en la variable dependiente tienda a tener el mismo tamaño que la clase mayoritaria, manteniendo las observaciones originales añadiendo al mismo tiempo las sintéticas:</p>
 <div class="cell" data-layout-align="center">
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] "Balanceo usando SMOTE"</code></pre>
@@ -271,7 +272,7 @@ good  bad
 </section>
 <section id="regresión-logística" class="level2">
 <h2 class="anchored" data-anchor-id="regresión-logística"><strong>3 Regresión logística</strong></h2>
-<p>Explicar</p>
+<p>Inicialmente se estima el modelo logístico donde primero se contemplan la totalidad de las variables explicativas para establecer cuáles de ellas resultan altamente significativas en la clasificación del default de los clientes. Esta identificación establece un precedente para comenzar un proceso de depuración en la cual se mantenga las variables que presentan un mayor poder explicativo. Para mayor comodidad se establece a good como la categoría de referencia en la variable dependiente, mientras que se pronosticará la probabilidad la categoría bad.</p>
 <section id="modelo-saturado" class="level3">
 <h3 class="anchored" data-anchor-id="modelo-saturado">Modelo saturado</h3>
 <p>El modelo saturado incluye todas las variables disponibles como predictoras.</p>
@@ -382,7 +383,14 @@ AIC: 809.57
 Number of Fisher Scoring iterations: 5</code></pre>
 </div>
 </div>
-<p>Explciar los resultados…</p>
+<p>Como se observa, las variables cuantitativas de duración y monto del crédito son levemente significativas y positivas por lo que pueden contribuir a aumentar la probabilidad de default, lo cual va en línea con la intuición económica pues, por ejemplo, ante un incremento de 1000 DM en el monto del crédito, con el beta de 0.106 y su resultado exponenciado de 1.11, se encuentra un incremento de 11% en términos de odds de incumplimiento manteniendo el resto de variables constantes. Esto podría denotar que mayores montos pueden ser más riesgosos de recuperar para la entidad financiera. A su vez, la duración del crédito con un beta de 0.0218 y un valor exponencial de 1.022 puede denotar que un mes adicional de crédito aumenta en 2.2% los odds de incumplimiento, manteniendo el resto de variables constantes, lo que podría suponer que durante plazos más extensos es posible que puedan ocurrir un mayor número de imprevistos que puedan afectar el cumplimiento de pago del crédito. Finalmente, variables como installment_rate resulta altamente explicativa, también catalogándose como un factor de incidencia al default, donde un beta de 0.357 y exponenciado de 1.43, denotaría que cada aumento de una unidad en la tasa cobrada por el crédito aumenta en aproximadamente 43% los odds de incumpliento, manteniendo el resto de variables constantes, pues puede estar ligado a un encarecimiento del crédito que podría no pagarse apropiadamente por parte del cliente. Mientras que otras variables numéricas y asociadas a una perspectiva socioeconómica, no resultan significativas estadísticamente (como es el caso de resident_since, age, existing_credits y people_liable).</p>
+<p>Ahora, en cuanto a las variables categóricas, se encuentra que checking_status presenta algunas categorías significativas con respecto a su base (0_200), como ocurre con greater_200 y no_account, por lo que tener un saldo relativamente elevado en la cuenta corriente existente en la entidad financiera así como no tener una cuenta corriente pueden aportar a la explicación del default en contraste con tener una cuenta corriente con 0 a 200 marcos alemanes, manteniendo el resto de variables constantes. Para el primer caso, con un beta de -1.069, se encuentra que al calcularlo con la exponencial, el resultado es 0.34 (34%) por lo que los clientes con saldos superiores a 2000 DM tienen aproximadamente un 66% menos odds de caer en default con respecto a la categoría base. Esto probablemente se justifique en que tener mayor acumulación de dinero en las cuentas puede funcionar como un colateral ante el incumplimiento. Mientras tanto, no poseer cuenta corriente con un beta de -1.541 y aplicando la exponencial 0.21 (21%) muestra los clientes sin una cuenta corriente tienen 79% menos probabilidad de incumplimiento en contraste con quienes tienen una cuenta valorada entre 0 y 200 DM. Aunque este resultado puede parecer contraintuitivo, podría sugerir preliminarmente que no mantener una cuenta corriente en el banco al que se le solicita el crédito no necesariamente implica una mayor probabilidad de impago. Ambos análisis manteniendo el resto de variables constantes.</p>
+<p>Por otro lado, la variable de historial crediticio (credit_history) solo presenta una categoría significativa con respecto a su base (all_paid) y es critical/other. Con un beta de -1.569 y un valor exponenciado de 0.21, denotan que aunque los clientes tengan cuentas críticas en otras entidades, presentan al rededor de 79% menos odds ratios de incumplimiento con respecto a quienes tienen sus obligaciones al día, manteniendo el resto de variables constantes. Este resultado parece en primera instancia contraintuitivo y podría ser un reflejo del uso no balanceado de la base.</p>
+<p>Igualmente, la variable de ahorros (savings) muestra que las categorías greater_1000 y unknow con respecto a la base 100_500, son significativas. Particularmente, se encuentra que si el cliente no tiene un status de ahorro conocido, su beta exponenciado toma el valor de 0.39, por lo que presentan 61% menos odds de incumplimiento respecto a quienes poseen ahorros entre 100 y 500 DM. Igualmente, con una significancia más baja, el mantener ahorros superiores a los 1000 DM, con un coeficiente de -1.569 y un valor exponenciado de 0.21, se asocia con un 79% menos de odds de incumplimiento respecto a la categoría base. Esto con el resto de variables constantes.</p>
+<p>Con respecto al sexo y el estado civil de los clientes, se encuentra que los hombres solteros (male_single) son una categoría significativa con respecto a la categoría base female_divorced_separated_married. Así, con un beta de -0.557 y valor exponenciado de 0.57, los hombres solteros presentan aproximadamente un 43% menos odds de incumplimiento respecto a la categoría base, con el resto de variables constantes. Este resultado podría estar asociado a un menor número de responsabilidades crediticias.</p>
+<p>La variable de other_debtors presenta significancia estadística en la categoría guarantor, con un beta de -1.638 con valor exponenciado de 0.19, con respecto a la base co_applicant. Así, los clientes respaldados por un garante presentan aproximadamente 81% menos de odds de incumplimiento en contraste con aquellos respaldados por un codeudor. Esto con el resto de variables constantes. El resultado es consistente, ya que el respaldo de un garante minimiza la posibilidad de impago al tomar la responsabilidad de los pagos del crédito en caso de que el titular falle.</p>
+<p>Housing presenta significancia en su categoría rent, por lo que un beta de 1.218 cuyo valor exponenciado es de 3.38, denota que clientes que viven una casa alquilada tienen aproximadamente 3.4 veces mayores odds de incumplimiento con respecto a la categoría base free, manteniendo el resto de variables constantes. Esto puede tener sentido ya que estas personas presentan un mayor número de obligaciones monetarias para cumplir.</p>
+<p>Finalmente, las variable de foreign_worker en su categoría ‘yes’ presenta significancia estadística, con un beta de 1.60 y valor exponenciado de 4.95, por lo cual los trabajadores extranjeros presentan aproximadamente 5 veces mayores odds de incumplimiento con respecto a los clientes que son trabajadores nacionales, manteniendo el resto de las variables constantes. Este resultado puede tener sentido ya que los trabajadores extranjeros pueden estar expuestos a choques de diversa índole en sus economías de procedencia, lo cual puede desestabilizar su compromiso con el pago de créditos. Igualmente, Entre las variables categóricas employment, property, other_installment_plans, job, telephone y purpose_grouped no presentan significancia estadística.</p>
 </section>
 <section id="selección-de-variables" class="level3">
 <h3 class="anchored" data-anchor-id="selección-de-variables">Selección de variables</h3>
@@ -456,7 +464,16 @@ Number of Fisher Scoring iterations: 5</code></pre>
 </div>
 </div>
 <p>El procedimiento backward parte del modelo con todas las variables y elimina progresivamente aquellas que no aportan suficiente información según el criterio AIC.</p>
-<p>Este procedimiento debe entenderse como una ayuda exploratoria, no como una regla automática definitiva. La selección final también debe considerar criterios estadísticos, interpretabilidad y sentido financiero. Explicar…</p>
+<p>Este procedimiento debe entenderse como una ayuda exploratoria, no como una regla automática definitiva. La selección final también debe considerar criterios estadísticos, interpretabilidad y sentido financiero. Como es posible observar en la anterior salida, se mantienen las variables: checking_status, duration, credit_history, credit_amount, savings, installment_rate, personal_status_sex, other_debtors, age, foreign_worker. Dichas variables también fueron identificadas como significativas en la mayoría de casos del modelo saturado, y de hecho, en su conjunto el criterio AIC disminuyó de 809.57 a 786.17, lo que podría entenderse como una mejora con respecto al modelo saturado, apelando a una menor complejidad.</p>
+<p>La variable de checking_status mantiene la significancia y el signo en sus categorías greater_200 y no_account con respecto a la categoría base 0_200, al igual que en el modelo saturado. Así, se encuentra un beta de -1.137 cuyo valor exponenciado es de 0.32, lo que denota que clientes con cuentas corrientes que contienen más de 200 DM presentan aproximadamente 68% menores odds de incumplimiento respecto a la categoría base con el resto de variables constantes. Mientras que el no tener una cuenta en la entidad financiera se asocia con 79% menores odds de incumplimiento en contraste con aquellas clientes con cuentas entre 0 y 200 DM.</p>
+<p>Por otro lado, la duración del préstamo presenta un valor exponenciado de 1.018, lo que aumentaría aproximadamente un 1.8% los odds de incumplimiento por cada mes adicional de duración del préstamo, manteniendo el resto de variables constantes y con una significancia estadística moderada.</p>
+<p>En cuanto al historial crediticio (credit_history) se encuentra que aumenta la significancia estadística en critical_other y se mantiene el signo con respecto al modelo saturado, por lo cual con un beta de -1.630 cuyo valor exponencial es 0.20 aproximadamente, se tiene que los clientes bajo esta categoría presentan casi 80% menores odds de incumplimiento con respecto a la categoría de referencia all_paid. Por otro lado, la categoría existing_paid aquiere relevancia, con un coeficiente exponenciado de 0.49, lo que indicaría que los clientes que tienen créditos al día se relacionan con 51% menores odds de incumplimiento, manteniendo el resto de variables constantes, representando un menor riesgo de incumplimiento.</p>
+<p>Por su parte, la variable credit_amount se mantiene significativa y con signo positivo en contraste con el modelo saturado, por lo que bajo un beta 0.00011, bajo un incremento de 1000 DMs se tiene un odd ratio de 1.12 aproximadamente, por lo que este aumento en el valor del crédito aumenta en 12% los odds de incumplimiento, dejando el resto de variables constantes. Esto podría estar ligado a que un aumento en el monto del crédito podría saturar a su capacidad de pago, llevándolo a eventuales riesgos de impago.</p>
+<p>Ahora, la variable de ahorros mantiene significativas sus categorías de greater_1000 y unknow con respecto a la catgoría base 100_500. Esto denotaría que con un odds de aproximadamente 0.31, un cliente con un nivel de ahorro superior a 1000 DM presenta 69% menores odds de incumplimiento con respecto a la categoría de referencia. Un efecto similar ocurre con el desconocimiento de la tenencia de ahorros cuyo beta es igual -0.969 cuyo valor exponenciado es de 0.38, por lo que presenta 62% menores odds de incumplimiento con respecto a la base. Todo esto manteniendo las variables constantes. Así, la tenencia de ahorros, puede disminuir la probabilidad del default al representar un colchón financiero en momentos de estrés aunque no reportar ahorros tampoco es un determinante rígido para caer en default.</p>
+<p>La variable installment_rate permanece altamente significativa con un beta de 0.328 y un valor exponenciado de 1.39, por lo que un aumento en la tasa impuesta para el préstamo aumenta 39% los odds de incumplimiento, mateniendo constantes el resto de variables. Nuevamente denotando que el encarecimiento del crédito puede afectar en el pago oportuno.</p>
+<p>El estado civil y el sexo mantienen como significativa su categoría de hombre soltero por lo que con un beta de -0.616 y un valor exponenciado de 0.54 se tiene que los hombres solteros presentan 46% menores odds de incumplimiento con respecto a mujeres casadas, divorciadas o separadas, manteniendo el resto de variables constantes.</p>
+<p>Los créditos con garantes presentan al rededor de un 80% de menores odds de incumplimiento con respecto a la categoría base de co-applicant y manteniendo el resto de variables constantes. Este resultado puede estar asociado a que los créditos bajo esta modalidad serían asumidos por el garante en caso de impago.</p>
+<p>Finalmente la edad es una variable levemente significativa con un odds ratio de 0.98 lo que señalaría que por cada año adicional de edad se reduce en 1.5% los odds de incumplimiento, manteniendo el resto de variables constantes, lo que podría estar relacionado con un mayor estabilidad laboral y menos decisiones adversas que puedan poner en peligro la estabilidad financiera del cliente, sin embargo, hay que tener precaución con esta interpretación ya que no necesariamente aplica para la generalidad de la muestra. Mientras que el ser un trabajador extrajero genera un beta de 1.423 y un valor exponencial de 4.15 lo que supondría que los trabajadores extranjeros presentan 4.1 veces mayores odds de incumplimiento con respecto a los trabajadores nacionales, manteniendo el resto de variables constantes y reflejando la vulnerabilidad a choques externos que pueden tener este tipo de clientes.</p>
 </section>
 <section id="evaluación-del-modelo-reducido" class="level3">
 <h3 class="anchored" data-anchor-id="evaluación-del-modelo-reducido">Evaluación del modelo reducido</h3>
@@ -483,7 +500,7 @@ foreign_worker         4.630  1  0.0314214 *
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 </div>
-<p>Esta prueba evalúa la contribución de cada variable al modelo, considerando el resto de variables incluidas. Explicar</p>
+<p>Esta prueba evalúa la contribución de cada variable al modelo, considerando el resto de variables incluidas. Así, se evidencia que todas las variables plantean al menos un grado de contribución con una significancia al 10%, lo que podría denotar su relevancia en la explicación del default. No obstante, entre todas las variables resalta la tenencia de una cuenta corriente, el historial crediticio, los ahorros y la tasa de interés a la cual se cobra el crédito, siendo estas características altamente significativas y muy asociadas a la caracterización financiera de los individuos, lo que podría ser una señal de que para evaluar el incumplimiento este tipo de variables tiene mayor poder explicativo.</p>
 </section>
 <section id="multicolinealidad" class="level4">
 <h4 class="anchored" data-anchor-id="multicolinealidad">Multicolinealidad</h4>
@@ -491,12 +508,12 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/vif-modelo-step-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/vif-modelo-step-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>El VIF permite detectar posibles problemas de multicolinealidad. Valores altos indican que una variable puede estar fuertemente relacionada con otras variables explicativas, lo que dificulta la interpretación individual de los coeficientes. Explicar… (Al parecer no hay multicloinealidad, VIF &lt; 4)</p>
+<p>El VIF permite detectar posibles problemas de multicolinealidad. Valores altos indican que una variable puede estar fuertemente relacionada con otras variables explicativas, lo que dificulta la interpretación individual de los coeficientes. Considerando lo anterior, no se encuentran problemas graves de multicolinealidad (Al parecer no hay multicloinealidad, VIF &lt; 4) por lo que las variables propuestas en el modelo reducido pueden coexistir sin generar impurezas o sesgos en el efecto del resto de variables.</p>
 </section>
 </section>
 <section id="modelo-final-propuesto" class="level3">
@@ -599,7 +616,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/vif-modelo-final-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/vif-modelo-final-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -739,7 +756,7 @@ foreign_workeryes                                3.962 1.079 20.978</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -749,7 +766,7 @@ foreign_workeryes                                3.962 1.079 20.978</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/roC-auc-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/roC-auc-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -824,7 +841,7 @@ foreign_workeryes                                3.962 1.079 20.978</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/distribucion-probabilidades-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-probabilidades-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -837,7 +854,7 @@ foreign_workeryes                                3.962 1.079 20.978</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/roc-auc-test-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/roc-auc-test-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -847,7 +864,7 @@ foreign_workeryes                                3.962 1.079 20.978</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/distribucion-probabilidades-test-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-probabilidades-test-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -976,7 +993,7 @@ foreign_workeryes                                3.418 1.058 12.215</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/punto-corte-roc-rl-both-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/punto-corte-roc-rl-both-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1166,7 +1183,7 @@ foreign_workeryes                                7.602 1.988 42.244</code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/punto-corte-roc-rl-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/punto-corte-roc-rl-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1274,7 +1291,7 @@ n= 800
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1291,7 +1308,7 @@ n= 800
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/grafico-tree-original-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
+<p><img src="Taller4_ajustado_files/figure-html/grafico-tree-original-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
 </figure>
 </div>
 </div>
@@ -1381,7 +1398,7 @@ n= 800
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/grafico-importancia-orig-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
+<p><img src="Taller4_ajustado_files/figure-html/grafico-importancia-orig-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
 </figure>
 </div>
 </div>
@@ -1411,7 +1428,7 @@ n= 800
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/punto-corte-roc-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/punto-corte-roc-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1483,7 +1500,267 @@ n= 800
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/distribucion-probabilidades-orig-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-probabilidades-orig-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+</section>
+</section>
+<section id="árbol-de-decisión-con-datos-balanceados---smote" class="level2">
+<h2 class="anchored" data-anchor-id="árbol-de-decisión-con-datos-balanceados---smote"><strong>7 Árbol de decisión con datos balanceados - SMOTE</strong></h2>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Classification tree:
+rpart::rpart(formula = default ~ ., data = data_train_bal_smote, 
+    method = "class", control = rpart.control(cp = 0.001, minsplit = 20, 
+        xval = 10))
+
+Variables actually used in tree construction:
+ [1] age                 checking_status     credit_amount      
+ [4] credit_history      duration            employment         
+ [7] existing_credits    installment_rate    other_debtors      
+[10] personal_status_sex property            purpose_grouped    
+[13] residence_since     savings            
+
+Root node error: 560/1120 = 0.5
+
+n= 1120 
+
+          CP nsplit rel error  xerror     xstd
+1  0.4285714      0   1.00000 1.10000 0.029731
+2  0.0446429      1   0.57143 0.57143 0.026997
+3  0.0178571      2   0.52679 0.58571 0.027196
+4  0.0107143      5   0.47321 0.53036 0.026380
+5  0.0098214      8   0.44107 0.52143 0.026237
+6  0.0089286     10   0.42143 0.51250 0.026090
+7  0.0066964     11   0.41250 0.51429 0.026119
+8  0.0064286     15   0.38571 0.52143 0.026237
+9  0.0062500     20   0.35357 0.52143 0.026237
+10 0.0035714     22   0.34107 0.53393 0.026437
+11 0.0029762     23   0.33750 0.52679 0.026323
+12 0.0026786     28   0.31786 0.51964 0.026208
+13 0.0017857     32   0.30714 0.51786 0.026178
+14 0.0010000     33   0.30536 0.52143 0.026237</code></pre>
+</div>
+</div>
+<p>Explicar…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+<section id="poda-del-árbol-1" class="level3">
+<h3 class="anchored" data-anchor-id="poda-del-árbol-1">Poda del árbol</h3>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.008928571</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/grafico-tree-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+</section>
+<section id="importancia-de-variables-1" class="level3">
+<h3 class="anchored" data-anchor-id="importancia-de-variables-1">Importancia de variables</h3>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small">
+<caption>Principales variables según importancia relativa</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Importancia</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Modelo</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Aporte</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">checking_status</td>
+<td style="text-align: right;">111.272095</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.446</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">savings</td>
+<td style="text-align: right;">32.345130</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.130</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">duration</td>
+<td style="text-align: right;">22.639908</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.091</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">credit_amount</td>
+<td style="text-align: right;">17.331692</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.069</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">credit_history</td>
+<td style="text-align: right;">16.598891</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.066</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">existing_credits</td>
+<td style="text-align: right;">8.298075</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.033</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">other_debtors</td>
+<td style="text-align: right;">8.067832</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.032</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">purpose_grouped</td>
+<td style="text-align: right;">7.984902</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.032</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">installment_rate</td>
+<td style="text-align: right;">7.165404</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.029</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">age</td>
+<td style="text-align: right;">4.132312</td>
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.017</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/grafico-importancia-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+</section>
+<section id="evaluación-de-desempeño-2" class="level3">
+<h3 class="anchored" data-anchor-id="evaluación-de-desempeño-2">Evaluación de desempeño</h3>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small">
+<caption>Puntos de corte óptimos estimados en entrenamiento</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Modelo</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Punto_corte_optimo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">TREE SMOTE</td>
+<td style="text-align: right;">0.48</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/punto-corte-roc-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small">
+<caption>Comparación de árboles con puntos de corte óptimos (TREE SMOTE = 0.48)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Métrica</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">TREE SMOTE - Train SMOTE</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">TREE SMOTE - Test</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Accuracy</td>
+<td style="text-align: right;">0.789</td>
+<td style="text-align: right;">0.690</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kappa</td>
+<td style="text-align: right;">0.579</td>
+<td style="text-align: right;">0.308</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sensitivity</td>
+<td style="text-align: right;">0.804</td>
+<td style="text-align: right;">0.600</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Specificity</td>
+<td style="text-align: right;">0.775</td>
+<td style="text-align: right;">0.729</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Precision</td>
+<td style="text-align: right;">0.781</td>
+<td style="text-align: right;">0.486</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">F1</td>
+<td style="text-align: right;">0.792</td>
+<td style="text-align: right;">0.537</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Balanced_Accuracy</td>
+<td style="text-align: right;">0.789</td>
+<td style="text-align: right;">0.664</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">AUC</td>
+<td style="text-align: right;">0.801</td>
+<td style="text-align: right;">0.667</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MCC</td>
+<td style="text-align: right;">0.579</td>
+<td style="text-align: right;">0.312</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Explicar…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-probabilidades-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1492,7 +1769,7 @@ n= 800
 </section>
 </section>
 <section id="random-forest" class="level2">
-<h2 class="anchored" data-anchor-id="random-forest"><strong>7 Random Forest</strong></h2>
+<h2 class="anchored" data-anchor-id="random-forest"><strong>8 Random Forest</strong></h2>
 <p>Explicar…</p>
 <div class="cell" data-layout-align="center">
 <div class="cell-output cell-output-stdout">
@@ -1594,14 +1871,14 @@ OOB prediction error (Brier s.):  0.1677209 </code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/grafico-importancia-rf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
+<p><img src="Taller4_ajustado_files/figure-html/grafico-importancia-rf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>Explicar…</p>
-<section id="evaluación-de-desempeño-2" class="level3">
-<h3 class="anchored" data-anchor-id="evaluación-de-desempeño-2">Evaluación de desempeño</h3>
+<section id="evaluación-de-desempeño-3" class="level3">
+<h3 class="anchored" data-anchor-id="evaluación-de-desempeño-3">Evaluación de desempeño</h3>
 <div class="cell" data-layout-align="center">
 <div class="cell-output-display">
 <table class="table caption-top table-sm table-striped small">
@@ -1623,7 +1900,7 @@ OOB prediction error (Brier s.):  0.1677209 </code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/punto-corte-roc-rf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/punto-corte-roc-rf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -1695,7 +1972,227 @@ OOB prediction error (Brier s.):  0.1677209 </code></pre>
 <div class="cell-output-display">
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
-<p><img src="Taller4_files/figure-html/distribucion-probabilidades-rf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-probabilidades-rf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+</section>
+</section>
+<section id="random-forest-con-datos-balanceados---smote" class="level2">
+<h2 class="anchored" data-anchor-id="random-forest-con-datos-balanceados---smote"><strong>9 Random Forest con datos balanceados - SMOTE</strong></h2>
+<p>Explicar…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stdout">
+<pre><code>Ranger result
+
+Call:
+ ranger::ranger(default ~ ., data = data_train_bal_smote, probability = TRUE,      num.trees = 500, mtry = floor(sqrt(p)), min.node.size = 10,      importance = "impurity", seed = 123) 
+
+Type:                             Probability estimation 
+Number of trees:                  500 
+Sample size:                      1120 
+Number of independent variables:  20 
+Mtry:                             4 
+Target node size:                 10 
+Variable importance mode:         impurity 
+Splitrule:                        gini 
+OOB prediction error (Brier s.):  0.1305293 </code></pre>
+</div>
+</div>
+<p>Explicar (ajustar hiperparámetros) y OOB…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small">
+<caption>Principales variables según importancia relativa</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Importancia</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Modelo</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Aporte</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">checking_status</td>
+<td style="text-align: right;">74.54790</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.168</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">duration</td>
+<td style="text-align: right;">46.47755</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.105</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">credit_amount</td>
+<td style="text-align: right;">43.60490</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.099</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">age</td>
+<td style="text-align: right;">41.92516</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.095</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">installment_rate</td>
+<td style="text-align: right;">33.45987</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.076</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">savings</td>
+<td style="text-align: right;">28.02789</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.063</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">credit_history</td>
+<td style="text-align: right;">25.24346</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.057</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">residence_since</td>
+<td style="text-align: right;">22.81469</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.052</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">existing_credits</td>
+<td style="text-align: right;">18.74312</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.042</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">employment</td>
+<td style="text-align: right;">16.52016</td>
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.037</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/grafico-importancia-rf-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="864"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+<section id="evaluación-de-desempeño-4" class="level3">
+<h3 class="anchored" data-anchor-id="evaluación-de-desempeño-4">Evaluación de desempeño</h3>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small">
+<caption>Puntos de corte óptimos estimados en entrenamiento</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Modelo</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Punto_corte_optimo</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">RF SMOTE</td>
+<td style="text-align: right;">0.508</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+roc.default(response = data_train_bal_smote$default, predictor = prob_smote_train,     levels = c("good", "bad"), direction = "&lt;", quiet = TRUE)
+
+Data: prob_smote_train in 560 controls (data_train_bal_smote$default good) &lt; 560 cases (data_train_bal_smote$default bad).
+Area under the curve: 0.9992</code></pre>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/punto-corte-roc-rf-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Explicar…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<table class="table caption-top table-sm table-striped small">
+<caption>Comparación de Random Forest con puntos de corte óptimos (RF SMOTE = 0.508)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Métrica</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">RF SMOTE - Train SMOTE</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">RF SMOTE - Test</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Accuracy</td>
+<td style="text-align: right;">0.987</td>
+<td style="text-align: right;">0.715</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Kappa</td>
+<td style="text-align: right;">0.973</td>
+<td style="text-align: right;">0.269</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sensitivity</td>
+<td style="text-align: right;">0.982</td>
+<td style="text-align: right;">0.400</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Specificity</td>
+<td style="text-align: right;">0.991</td>
+<td style="text-align: right;">0.850</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Precision</td>
+<td style="text-align: right;">0.991</td>
+<td style="text-align: right;">0.533</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">F1</td>
+<td style="text-align: right;">0.987</td>
+<td style="text-align: right;">0.457</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Balanced_Accuracy</td>
+<td style="text-align: right;">0.987</td>
+<td style="text-align: right;">0.625</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">AUC</td>
+<td style="text-align: right;">0.999</td>
+<td style="text-align: right;">0.738</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MCC</td>
+<td style="text-align: right;">0.973</td>
+<td style="text-align: right;">0.274</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Explicar…</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Taller4_ajustado_files/figure-html/distribucion-probabilidades-rf-smote-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
 </figure>
 </div>
 </div>
