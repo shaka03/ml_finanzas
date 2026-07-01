@@ -1,0 +1,1344 @@
+---
+title: "Solución Taller 2: Construcción de clasificador"
+subtitle: |
+  Universidad del Valle
+  
+  Facultad de Ingeniería
+  
+  Machine Learning para Gestión Financiera
+  
+  Profesor: Iván Mauricio Bermúdez Vera
+author: |
+  Estudiantes:
+  
+  Valeria Saldaña Benavides - 2500106
+  
+  Juan Sebastián Chacón Correa - 2500417
+  
+  Jhon Fernando Tascón Velasco -2500665
+date: "\\today"
+linkcolor: blue
+urlcolor: blue
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    df_print: paged
+  
+header-includes:
+  - \usepackage{longtable}
+  - \usepackage[table]{xcolor}
+  - \usepackage{array}
+  - \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+## **1 Introducción** ##
+
+La predicción del comportamiento crediticio de los clientes resulta fundamental para las entidades prestadoras de dinero dado que pueden exponerse a un posible riesgo de impago que finalmente repercuta negativamente en el rendimiento económico de la institución. Considerando lo anterior, es necesario establecer modelos de clasificación que permitan generar una aproximación empírica sobre las características de los clientes que pueden ser relevantes para un posible impago. Así, a continuación se presenta la construcción y análisis de tres modelos clasificadores que permiten predecir el comportamiento crediticio de los clientes, considerando la variable respuesta `default` como la variable de interés. Los modelos a evaluar son: regresión logística, árbol de decisión y random forest.
+
+```{r librerias, include=FALSE}
+if (!require("pacman")) install.packages("pacman")
+
+pacman::p_load(
+  here,
+  dplyr,
+  tidyr,
+  ggplot2,
+  scales,
+  naniar,
+  gtsummary,
+  caret,
+  pROC,
+  car,
+  mltools,
+  rpart,
+  rpart.plot,
+  knitr,
+  kableExtra,
+  caret,
+  ranger,
+  scales,
+  ROSE,
+  rsample,
+  recipes,
+  themis
+)
+```
+
+## **2 Carga de datos**
+
+El conjunto de datos German Credit presenta información sobre 1000 solicitantes de crédito. Cada variable en el conjunto permite una aproximación a las características financieras y socioeconómicas del potencial cliente a su vez que permite construir un análisis de estas variables con respecto a su comportamiento crediticio. Previamente, el dataset fue procesado y limpiado para su posterior uso en la construcción de los clasificadores.
+
+```{r lectura-datos, echo=FALSE}
+# Carga de datos
+data_german <- read.table(
+  "datos_german_preparados.csv",
+  header = TRUE,
+  sep=","
+)
+```
+
+### Revisión del conjunto de datos
+
+```{r nombres-variables, echo=FALSE}
+names(data_german)
+```
+
+```{r estructura-datos, echo=FALSE}
+str(data_german)
+```
+
+El cojunto de datos tratado se encuentra compuesto por 21 variables de las cuales 1 de ellas es la variable respuesta `default` y 20 posibles variables explicativas. De estas 20 variables, 13 deben adaptarse a un formato tipo factor para denotar adecuadamente sus categóricas y 7 son numéricas.
+
+### División en train y test
+
+El conjunto de datos se divide en 80% train y 20% test, siendo estas particiones las usualmente utilizadas en problemas de clasificación. La división se realiza de manera estratificada para asegurar que la proporción de clases se mantenga en ambos conjuntos. Así, 800 de los datos permiten establecer el entrenamiento de los modelos y 200 datos permiten evaluar el desempeño de los clasificadores.
+
+```{r division-datos, echo=FALSE}
+set.seed(123)
+
+# 1. Crear el objeto de división (80% train, 20% test)
+# El argumento 'strata' asegura que la proporción de clases se mantenga en ambos sets
+split_obj <- initial_split(data_german, prop = 0.8, strata = default)
+
+# 2. Extraer los conjuntos de datos usando las funciones del paquete
+data_train <- training(split_obj)
+data_test  <- testing(split_obj)
+
+records_train <- nrow(data_train)
+records_test <- nrow(data_test)
+
+print(records_train)
+print(records_test)
+```
+
+### Preparación de variables
+
+Se hace la conversión a factores para las variables `default`, `checking_status`, `credit_history`, `savings`, `employment`, `personal_status_sex`, `other_debtors`, `property`, `other_installment_plans` `housing`, `job`, `telephone`, `foreign_worker`, `purpose_grouped`
+
+```{r convertir-factores, echo=FALSE}
+vars_factor <- c(
+  "default", "checking_status", "credit_history", "savings", "employment",
+  "personal_status_sex", "other_debtors", "property", "other_installment_plans",
+  "housing", "job", "telephone", "foreign_worker", "purpose_grouped"
+)
+
+convertir_factores <- function(datos) {
+  datos %>%
+    mutate(across(all_of(vars_factor), as.factor)) %>%
+    mutate(default = factor(default, levels = c("good", "bad")))
+}
+
+data_german  <- convertir_factores(data_german)
+data_train  <- convertir_factores(data_train)
+data_test   <- convertir_factores(data_test)
+```
+
+```{r echo=FALSE}
+str(data_german)
+```
+
+Se implementan las variables en factores que permitirán analizar características tales como calidad y características del empleo, tenencia de posibles colaterales y variables con características de tipo financieras que puedan dar señales sobre  el comportamiento crediticio del individuo solicitante como por ejemplo la duración del mismo, el monto concedido, su historial crediticio etc. Finalmente, el nivel `"bad"` se considera la **clase positiva**, porque representa el evento de interés: presentar default. Esta variable se analizará junto a un conjunto seleccionado de variables explicativas que permitirá establecer potencialmente qué clientes podrían caer en impago, dando insumos a la institución financiera para tomar decisiones sobre el manejo de los créditos asignados así como también las consideraciones que deberían tener en cuenta a futuro.
+
+
+
+### Distribución de la variable respuesta
+
+```{r verificar-default, echo=FALSE}
+print("Cantidad registros de la variable default")
+levels(data_german$default)
+table(data_german$default)
+```
+
+```{r distribucion-default, fig.height=5, echo=FALSE}
+color <- c("#1C5A99", "#EAC0BD")
+
+tabla_default <- data_german %>%
+  count(default) %>%
+  mutate(
+    porcentaje = n / sum(n),
+    etiqueta = paste0(n, "\n", scales::percent(porcentaje, accuracy = 0.1))
+  )
+
+ggplot(tabla_default,
+       aes(x = default, y = n, fill = default)) +
+  geom_col(alpha = 0.75, width = 0.5) +
+  geom_text(
+    aes(y = n / 2, label = etiqueta),
+    size = 5,
+    fontface = "bold",
+    color = "black"
+  ) +
+  scale_fill_manual(values = c(
+    "good" = color[1],
+    "bad" = color[2]
+  )) +
+  labs(
+    title = "Distribución de la variable respuesta",
+    x = "Default",
+    y = "Frecuencia"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold")
+  )
+```
+
+En primer lugar, se analiza la variable dependiente y se encuentra que en los datos predomina el buen compotamiento en cuanto a los pagos, abarcando este el 70% de la muestra y dejando solo el 30% de los datos como registros de clientes con dificultades para realizar los pagos acordados. Dadas las anteriores proporciones, es necesario aplicar técnicas que permitan balancear la información, ya que de no hacerlo, modelos de machine learning como Random Forest y Árboles de Clasificación podrían tener tendencia a sesgarse al momento de configurar sus nodos, favoreciendo a la clase mayoritaria y limitando la identificación adecuada de la minoritaria. Para el modelo de Regresión Logística el impacto puede atenuarse un poco más al tener estrategias como la ponderación de clases o el ajuste del umbral de clasificación, sin embargo, para este ejercicio las técnicas de balanceo se aplicarán sobre los datos y se mantendrá de este modo para la especificación de los modelos.
+
+
+### Balanceo de los datos
+
+Para iniciar con el balanceo de las clases se implementó undersampling y subsampling conjuntamente. Esto permite reducir el número de observaciones en la clase mayoritaria que en este caso hace referencia al buen comportamiento en cuanto a los pagos, al mismo tiempo que se aumentan la información de la clase minoritaria. La proporción deseada para ambas clases debería rondar en el 50%, obteniendo así un conjunto balanceado. Así, se obtienen los siguientes resultados:
+
+``` {r balanceo de datos, echo=FALSE}
+print("Balanceo usando subsampling y undersampling (both):")
+# Both
+data_train_bal_both <- ROSE::ovun.sample(
+  default ~ .,
+  data = data_train,
+  method = "both",
+  p = 0.5
+)$data
+
+table(data_train_bal_both$default)
+
+```
+
+También se implementa la técnica de balanceo SMOTE para la generación de nuevos datos sintéticos que permitirán aumentar a la clase minoritaria (impago). Particularmente, se busca que la clase bad en la variable dependiente tienda a tener el mismo tamaño que la clase mayoritaria, manteniendo las observaciones originales añadiendo al mismo tiempo las sintéticas:
+
+```{r echo=FALSE}
+print("Balanceo usando SMOTE")
+# SMOTE
+receta_smote <- recipe(default ~ ., data = data_train) %>%
+  step_smotenc(default, over_ratio = 1)
+data_train_bal_smote <- prep(receta_smote) %>% 
+  bake(new_data = NULL)
+
+table(data_train_bal_smote$default)
+```
+
+## **3 Regresión logística**
+
+Inicialmente se estima el modelo logístico donde primero se contemplan la totalidad de las variables explicativas para establecer cuáles de ellas resultan altamente significativas en la clasificación del default de los clientes. Esta identificación establece un precedente para comenzar un proceso de depuración en la cual se mantenga las variables que presentan un mayor poder explicativo. Para mayor comodidad se establece a good como la categoría de referencia en la variable dependiente, mientras que se pronosticará la probabilidad la categoría bad.
+
+
+### Modelo saturado
+
+El modelo saturado incluye todas las variables disponibles como predictoras.
+
+```{r modelo-saturado, echo=FALSE}
+modelo_sat <- glm(default ~ ., family = binomial, data = data_train)
+
+summary(modelo_sat)
+```
+
+Como se observa, las variables cuantitativas de duración y monto del crédito son levemente significativas y positivas por lo que pueden contribuir a aumentar la probabilidad de default, lo cual va en línea con la intuición económica pues, por ejemplo, ante un incremento de 1000 DM en el monto del crédito, con el beta de 0.106 y su resultado exponenciado de 1.11, se encuentra un incremento de 11% en términos de odds de incumplimiento manteniendo el resto de variables constantes. Esto podría denotar que mayores montos pueden ser más riesgosos de recuperar para la entidad financiera. A su vez, la duración del crédito con un beta de 0.0218 y un valor exponencial de 1.022 puede denotar que un mes adicional de crédito aumenta en 2.2% los odds de incumplimiento, manteniendo el resto de variables constantes, lo que podría suponer que durante plazos más extensos es posible que puedan ocurrir un mayor número de imprevistos que puedan afectar el cumplimiento de pago del crédito. Finalmente, variables como installment_rate resulta altamente explicativa, también catalogándose como un factor de incidencia al default, donde un beta de 0.357 y exponenciado de 1.43, denotaría que cada aumento de una unidad en la tasa cobrada por el crédito aumenta en aproximadamente 43% los odds de incumpliento, manteniendo el resto de variables constantes, pues puede estar ligado a un encarecimiento del crédito que podría no pagarse apropiadamente por parte del cliente. Mientras que otras variables numéricas y asociadas a una perspectiva socioeconómica, no resultan significativas estadísticamente (como es el caso de resident_since, age, existing_credits y people_liable). 
+
+Ahora, en cuanto a las variables categóricas, se encuentra que checking_status presenta algunas categorías significativas con respecto a su base (0_200), como ocurre con greater_200 y no_account, por lo que tener un saldo relativamente elevado en la cuenta corriente existente en la entidad financiera así como no tener una cuenta corriente pueden aportar a la explicación del default en contraste con tener una cuenta corriente con 0 a 200 marcos alemanes, manteniendo el resto de variables constantes. Para el primer caso, con un beta de -1.069, se encuentra que al calcularlo con la exponencial, el resultado es 0.34 (34%) por lo que los clientes con saldos superiores a 2000 DM tienen aproximadamente un 66% menos odds de caer en default con respecto a la categoría base. Esto probablemente se justifique en que tener mayor acumulación de dinero en las cuentas puede funcionar como un colateral ante el incumplimiento. Mientras tanto, no poseer cuenta corriente con un beta de -1.541 y aplicando la exponencial 0.21 (21%) muestra los clientes sin una cuenta corriente tienen 79% menos probabilidad de incumplimiento en contraste con quienes tienen una cuenta valorada entre 0 y 200 DM. Aunque este resultado puede parecer contraintuitivo, podría sugerir preliminarmente que no mantener una cuenta corriente en el banco al que se le solicita el crédito no necesariamente implica una mayor probabilidad de impago. Ambos análisis manteniendo el resto de variables constantes.
+
+Por otro lado, la variable de historial crediticio (credit_history) solo presenta una categoría significativa con respecto a su base (all_paid) y es critical/other. Con un beta de -1.569 y un valor exponenciado de 0.21, denotan que aunque los clientes tengan cuentas críticas en otras entidades, presentan al rededor de 79% menos odds ratios de incumplimiento con respecto a quienes tienen sus obligaciones al día, manteniendo el resto de variables constantes. Este resultado parece en primera instancia contraintuitivo y podría ser un reflejo del uso no balanceado de la base.
+
+Igualmente, la variable de ahorros (savings) muestra que las categorías greater_1000 y unknow con respecto a la base 100_500, son significativas. Particularmente, se encuentra que si el cliente no tiene un status de ahorro conocido, su beta exponenciado toma el valor de 0.39, por lo que presentan 61% menos odds de incumplimiento respecto a quienes poseen ahorros entre 100 y 500 DM. Igualmente, con una significancia más baja, el mantener ahorros superiores a los 1000 DM, con un coeficiente de -1.569 y un valor exponenciado de 0.21, se asocia con un 79% menos de odds de incumplimiento respecto a la categoría base. Esto con el resto de variables constantes.
+
+Con respecto al sexo y el estado civil de los clientes, se encuentra que los hombres solteros (male_single) son una categoría significativa con respecto a la categoría base female_divorced_separated_married. Así, con un beta de -0.557 y valor exponenciado de 0.57, los hombres solteros presentan aproximadamente un 43% menos odds de incumplimiento respecto a la categoría base, con el resto de variables constantes. Este resultado podría estar asociado a un menor número de responsabilidades crediticias.
+
+La variable de other_debtors presenta significancia estadística en la categoría guarantor, con un beta de -1.638 con valor exponenciado de 0.19, con respecto a la base co_applicant. Así, los clientes respaldados por un garante presentan aproximadamente 81% menos de odds de incumplimiento en contraste con aquellos respaldados por un codeudor. Esto con el resto de variables constantes. El resultado es consistente, ya que el respaldo de un garante minimiza la posibilidad de impago al tomar la responsabilidad de los pagos del crédito en caso de que el titular falle.
+
+Housing presenta significancia en su categoría rent, por lo que un beta de 1.218 cuyo valor exponenciado es de 3.38, denota que clientes que viven una casa alquilada tienen aproximadamente 3.4 veces mayores odds de incumplimiento con respecto a la categoría base free, manteniendo el resto de variables constantes. Esto puede tener sentido ya que estas personas presentan un mayor número de obligaciones monetarias para cumplir.
+
+Finalmente, las variable de foreign_worker en su categoría 'yes' presenta significancia estadística, con un beta de 1.60 y valor exponenciado de 4.95, por lo cual los trabajadores extranjeros presentan aproximadamente 5 veces mayores odds de incumplimiento con respecto a los clientes que son trabajadores nacionales, manteniendo el resto de las variables constantes. Este resultado puede tener sentido ya que los trabajadores extranjeros pueden estar expuestos a choques de diversa índole en sus economías de procedencia, lo cual puede desestabilizar su compromiso con el pago de créditos. Igualmente, Entre las variables categóricas employment, property, other_installment_plans, job, telephone y purpose_grouped no presentan significancia estadística.
+
+
+### Selección de variables
+
+Como estrategia inicial, se aplica selección backward usando el criterio AIC.
+
+
+```{r modelo-backward, echo=FALSE}
+modelo_step <- stats::step(modelo_sat, direction = "backward", trace = FALSE)
+summary(modelo_step)
+```
+
+El procedimiento backward parte del modelo con todas las variables y elimina progresivamente aquellas que no aportan suficiente información según el criterio AIC.
+
+Este procedimiento debe entenderse como una ayuda exploratoria, no como una regla automática definitiva. La selección final también debe considerar criterios estadísticos, interpretabilidad y sentido financiero. Como es posible observar en la anterior salida, se mantienen las variables: checking_status, duration, credit_history, credit_amount, savings, installment_rate, personal_status_sex, other_debtors, age, foreign_worker. Dichas variables también fueron identificadas como significativas en la mayoría de casos del modelo saturado, y de hecho, en su conjunto el criterio AIC disminuyó de 809.57 a 786.17, lo que podría entenderse como una mejora con respecto al modelo saturado, apelando a una menor complejidad.
+
+La variable de checking_status mantiene la significancia y el signo en sus categorías greater_200 y no_account con respecto a la categoría base 0_200, al igual que en el modelo saturado. Así, se encuentra un beta de -1.137 cuyo valor exponenciado es de 0.32, lo que denota que clientes con cuentas corrientes que contienen más de 200 DM presentan aproximadamente 68% menores odds de incumplimiento respecto a la categoría base con el resto de variables constantes. Mientras que el no tener una cuenta en la entidad financiera se asocia con 79% menores odds de incumplimiento en contraste con aquellas clientes con cuentas entre 0 y 200 DM.
+
+Por otro lado, la duración del préstamo presenta un valor exponenciado de 1.018, lo que aumentaría aproximadamente un 1.8% los odds de incumplimiento por cada mes adicional de duración del préstamo, manteniendo el resto de variables constantes y con una significancia estadística moderada.
+
+En cuanto al historial crediticio (credit_history) se encuentra que aumenta la significancia estadística en critical_other y se mantiene el signo con respecto al modelo saturado, por lo cual con un beta de -1.630 cuyo valor exponencial es 0.20 aproximadamente, se tiene que los clientes bajo esta categoría presentan casi 80% menores odds de incumplimiento con respecto a la categoría de referencia all_paid. Por otro lado, la categoría existing_paid aquiere relevancia, con un coeficiente exponenciado de 0.49, lo que indicaría que los clientes que tienen créditos al día se relacionan con 51% menores odds de incumplimiento, manteniendo el resto de variables constantes, representando un menor riesgo de incumplimiento. 
+
+Por su parte, la variable credit_amount se mantiene significativa y con signo positivo en contraste con el modelo saturado, por lo que bajo un beta 0.00011, bajo un incremento de 1000 DMs se tiene un odd ratio de 1.12 aproximadamente, por lo que este aumento en el valor del crédito aumenta en 12% los odds de incumplimiento, dejando el resto de variables constantes. Esto podría estar ligado a que un aumento en el monto del crédito podría saturar a su capacidad de pago, llevándolo a eventuales riesgos de impago.
+
+Ahora, la variable de ahorros mantiene significativas sus categorías de greater_1000 y unknow con respecto a la catgoría base 100_500. Esto denotaría que con un odds de aproximadamente 0.31, un cliente con un nivel de ahorro superior a 1000 DM presenta 69% menores odds de incumplimiento con respecto a la categoría de referencia. Un efecto similar ocurre con el desconocimiento de la tenencia de ahorros cuyo beta es igual -0.969 cuyo valor exponenciado es de 0.38, por lo que presenta 62% menores odds de incumplimiento con respecto a la base. Todo esto manteniendo las variables constantes. Así, la tenencia de ahorros, puede disminuir la probabilidad del default al representar un colchón financiero en momentos de estrés aunque no reportar ahorros tampoco es un determinante rígido para caer en default.
+
+La variable installment_rate permanece altamente significativa con un beta de 0.328 y un valor exponenciado de 1.39, por lo que un aumento en la tasa impuesta para el préstamo aumenta 39% los odds de incumplimiento, mateniendo constantes el resto de variables. Nuevamente denotando que el encarecimiento del crédito puede afectar en el pago oportuno.
+
+El estado civil y el sexo mantienen como significativa su categoría de hombre soltero por lo que con un beta de -0.616 y un valor exponenciado de 0.54 se tiene que los hombres solteros presentan 46% menores odds de incumplimiento con respecto a mujeres casadas, divorciadas o separadas, manteniendo el resto de variables constantes.
+
+Los créditos con garantes presentan al rededor de un 80% de menores odds de incumplimiento con respecto a la categoría base de co-applicant y manteniendo el resto de variables constantes. Este resultado puede estar asociado a que los créditos bajo esta modalidad serían asumidos por el garante en caso de impago.
+
+Finalmente la edad es una variable levemente significativa con un odds ratio de 0.98 lo que señalaría que por cada año adicional de edad se reduce en 1.5% los odds de incumplimiento, manteniendo el resto de variables constantes, lo que podría estar relacionado con un mayor estabilidad laboral y menos decisiones adversas que puedan poner en peligro la estabilidad financiera del cliente, sin embargo, hay que tener precaución con esta interpretación ya que no necesariamente aplica para la generalidad de la muestra. Mientras que el ser un trabajador extrajero genera un beta de 1.423 y un valor exponencial de 4.15 lo que supondría que los trabajadores extranjeros presentan 4.1 veces mayores odds de incumplimiento con respecto a los trabajadores nacionales, manteniendo el resto de variables constantes y reflejando la vulnerabilidad a choques externos que pueden tener este tipo de clientes.
+
+
+
+
+
+### Evaluación del modelo reducido
+
+#### Significancia global de variables
+
+```{r anova-modelo-step, ECHO=FALSE}
+car::Anova(modelo_step)
+```
+
+Esta prueba evalúa la contribución de cada variable al modelo, considerando el resto de variables incluidas. Así, se evidencia que todas las variables plantean al menos un grado de contribución con una significancia al 10%, lo que podría denotar su relevancia en la explicación del default. No obstante, entre todas las variables resalta la tenencia de una cuenta corriente, el historial crediticio, los ahorros y la tasa de interés a la cual se cobra el crédito, siendo estas características altamente significativas y muy asociadas a la caracterización financiera de los individuos, lo que podría ser una señal de que para evaluar el incumplimiento este tipo de variables tiene mayor poder explicativo.
+
+#### Multicolinealidad
+
+```{r vif-modelo-step, fig.height=5, echo=FALSE}
+vif_step <- round(car::vif(modelo_step), 2)
+
+barplot(
+  sort(vif_step),
+  cex.names = 0.7,
+  col = ifelse(sort(vif_step) > 4, "red", "gray70"),
+  main = "Factor de Inflación de Varianza",
+  ylab = "VIF",
+  las = 2
+)
+abline(h = 4, col = "red", lty = 2)
+```
+
+El VIF permite detectar posibles problemas de multicolinealidad. Valores altos indican que una variable puede estar fuertemente relacionada con otras variables explicativas, lo que dificulta la interpretación individual de los coeficientes. Considerando lo anterior, no se encuentran problemas graves de multicolinealidad (Al parecer no hay multicloinealidad, VIF < 4) por lo que las variables propuestas en el modelo reducido pueden coexistir sin generar impurezas o sesgos en el efecto del resto de variables.
+
+### Modelo final propuesto
+
+A partir del análisis anterior se ajusta un modelo final más parsimonioso. De acuerdo con lo anterior, age y duration son los menos significativos, especialmente age, podriamos quitarlo. Las variables que se seleccionan son: `checking_status`, `duration`, `credit_history`, `credit_amount`, `savings`, `installment_rate`, `personal_status_sex`, `other_debtors`, `foreign_worker`
+
+```{r formula-modelo}
+
+formula_rl <- default ~ checking_status +  duration +  credit_history +  credit_amount + savings + installment_rate +  personal_status_sex + other_debtors +  foreign_worker
+
+```
+
+
+```{r modelo-rl-final, echo=FALSE}
+modelo_rl <- glm(
+  formula_rl,
+  family = binomial,
+  data = data_train
+)
+
+summary(modelo_rl)
+```
+
+Explicar...
+
+### Significancia de variables del modelo final
+
+```{r anova-modelo-final , echo=FALSE}
+car::Anova(modelo_rl)
+```
+
+Explicar...
+
+### Multicolinealidad del modelo final
+
+```{r vif-modelo-final, fig.height=5, echo=FALSE}
+vif_final <- round(car::vif(modelo_rl), 2)
+
+barplot(
+  sort(vif_final),
+  cex.names = 0.7,
+  col = ifelse(sort(vif_final) > 4, "red", "gray70"),
+  main = "Factor de Inflación de Varianza - Modelo final",
+  ylab = "VIF",
+  las = 2
+)
+abline(h = 4, col = "red", lty = 2)
+```
+
+Explicar...
+
+### Comparación mediante razón de verosimilitud
+
+#### Modelo final versus modelo saturado
+
+```{r test-lr-saturado, echo=FALSE}
+anova(modelo_rl, modelo_sat, test = "Chisq")
+```
+
+Esta prueba permite evaluar si el modelo saturado mejora significativamente el ajuste respecto al modelo final. Si la diferencia no es significativa, se prefiere el modelo más simple. Explicar, con base en p-value al parecer la diferencia entre modelos no es significativa, por lo que el modelo final sería mejor por principio de parsimonia...
+
+#### Modelo final versus modelo nulo
+
+```{r test-lr-nulo, echo=FALSE}
+modelo_nulo <- glm(
+  default ~ 1,
+  family = binomial,
+  data = data_train
+)
+
+anova(modelo_nulo, modelo_rl, test = "Chisq")
+```
+
+Esta prueba compara el modelo final contra un modelo sin variables explicativas. Un resultado significativo indica que el conjunto de predictores mejora la explicación del default. Explciar... para este caso si es significativa la diferencia, por o que el modelo final es mejor que el modelo nulo
+
+### Interpretación de parámetros
+
+En regresión logística, los coeficientes se interpretan en términos de log-odds. Para facilitar la interpretación, se calculan los **odds ratios** mediante la transformación exponencial de los coeficientes.
+
+```{r funcion-odds-ratio, echo=FALSE}
+interpretar_parametros <- function(modelo) {
+  tabla_coef <- cbind(
+    Coeficiente = coef(modelo),
+    confint(modelo, level = 0.95)
+  )
+  
+  tabla_or <- exp(tabla_coef)
+  
+  list(
+    Coeficientes = round(tabla_coef, 3),
+    Odds_Ratio = round(tabla_or, 3)
+  )
+}
+
+interpretar_parametros(modelo_rl)
+```
+
+Los Odds Ratio permiten cuantificar cómo cambia el riesgo de incumplimiento ante cambios en las variables explicativas. Valores mayores a 1 indican factores asociados a un mayor riesgo, mientras que valores menores a 1 indican factores protectores frente al incumplimiento. Sin embargo, siempre deben interpretarse junto con sus intervalos de confianza para evaluar la significancia estadística de los efectos observados. En resumen:
+
+
+* OR > 1: aumenta la probabilidad de incumplimiento (default = Si).
+* OR < 1: disminuye la probabilidad de incumplimiento.
+* OR = 1: no tiene efecto.
+* Un efecto suele considerarse estadísticamente significativo cuando el IC95% del OR no contiene el valor 1.
+
+Explicar...
+
+### Evaluación de desempeño
+
+La regresión logística no genera directamente una clasificación, sino una probabilidad estimada de pertenecer a la clase positiva.
+
+```{r funciones-evaluacion, echo=FALSE}
+
+evaluar_modelo <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
+  prob <- predict(modelo, newdata = datos, type = "response")
+  pred <- factor(ifelse(prob > pc, "bad", "good"), levels = c("good", "bad"))
+  ref  <- factor(datos$default, levels = c("good", "bad"))
+  
+  cm <- caret::confusionMatrix(
+    pred,
+    ref,
+    positive = "bad",
+    mode = "everything"
+  )
+  
+  roc_obj <- pROC::roc(ref, prob, levels = c("good", "bad"), direction = "<", quiet = TRUE)
+  
+  tibble(
+    Modelo = nombre_modelo,
+    Conjunto = conjunto,
+    Punto_corte = pc,
+    Accuracy = as.numeric(cm$overall["Accuracy"]),
+    Kappa = as.numeric(cm$overall["Kappa"]),
+    Sensitivity = as.numeric(cm$byClass["Sensitivity"]),
+    Specificity = as.numeric(cm$byClass["Specificity"]),
+    Precision = as.numeric(cm$byClass["Precision"]),
+    F1 = as.numeric(cm$byClass["F1"]),
+    Balanced_Accuracy = as.numeric(cm$byClass["Balanced Accuracy"]),
+    AUC = as.numeric(pROC::auc(roc_obj)),
+    MCC = as.numeric(mltools::mcc(preds = pred, actuals = ref))
+  )
+}
+
+```
+
+### Curva ROC y AUC
+```{r probabilidades, echo=FALSE}
+
+# Predicción probabilidades
+score_rl_tr <- predict(modelo_rl)
+
+# Con esta transformación los score se convierten en probabilidades
+#prob = exp(Score)/(1+exp(Score))                  
+
+prob_rl_tr  <- predict(modelo_rl, type = "response")
+
+print("Resumen del score:")
+summary(score_rl_tr)
+```
+
+Explicar...
+
+```{r echo=FALSE}
+print("Resumen probabilidades datos de entrenamiento:")
+summary(prob_rl_tr)
+
+ggplot(data.frame(prob_rl_tr),
+       aes(prob_rl_tr)) +
+  geom_density()+
+  labs(x = "Probabilidad estimada de default") +
+  theme_bw()
+```
+
+Explicar...
+```{r roC-auc, echo=FALSE}
+
+roc_rl_tr <- pROC::roc(
+  response = data_train$default,
+  predictor = prob_rl_tr,
+  levels = c("good", "bad"),
+  direction = "<",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_tr,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - Regresión logística - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r prediccion-probabilidades, echo=FALSE}
+prob_orig_train <- predict(modelo_rl, newdata = data_train, type = "response")
+
+roc_orig_train <- pROC::roc(data_train$default, prob_orig_train,
+                            levels = c("good", "bad"), direction = "<", quiet = TRUE)
+
+pc_orig <- as.numeric(pROC::coords(
+  roc_orig_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+))
+```
+
+```{r echo=FALSE}
+resultados_opt <- bind_rows(
+  evaluar_modelo(modelo_rl, data_train, "RL original", "Train original", pc = pc_orig),
+  evaluar_modelo(modelo_rl, data_test, "RL original", "Test", pc = pc_orig)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de modelos con puntos de corte óptimos (RL original = ",
+      round(pc_orig,3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+### Distribución de probabilidades estimadas datos de entrenamiento
+
+```{r distribucion-probabilidades, fig.height=6, echo=FALSE}
+
+coords_best <- pROC::coords(
+  roc_rl_tr,
+  x = "best",
+  best.method = "youden",
+  ret = c("threshold", "sensitivity", "specificity")
+)
+
+with(data_train, {
+  d_si <- density(prob_rl_tr[default == "bad"])
+  d_no <- density(prob_rl_tr[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rl_tr),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, 0.25, as.numeric(coords_best["threshold"]))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Este gráfico muestra cómo se distribuyen las probabilidades estimadas para los clientes con y sin default. Si las distribuciones se separan claramente, el modelo tiene mayor capacidad discriminante.
+
+### Curva ROC-AUC y distribución de probabilidades en datos de prueba
+
+```{r roc-auc-test, fig.height=6, echo=FALSE}
+
+prob_rl_te <- predict(modelo_rl, newdata = data_test, type = "response")
+
+pred_rl_te <- factor(
+  ifelse(prob_rl_te > pc_orig, "good", "bad"),
+  levels = levels(data_test$default)
+)
+
+roc_rl_te <- pROC::roc(
+  response = data_test$default,
+  predictor = prob_rl_te,
+  levels = c("good", "bad"),
+  direction = "<",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_te,
+  legacy.axes = TRUE,
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC en datos de prueba - Regresión logístics"
+)
+```
+
+Explicar ...
+
+```{r distribucion-probabilidades-test, fig.height=6, echo=FALSE}
+
+with(data_test, {
+  d_si <- density(prob_rl_te[default == "bad"])
+  d_no <- density(prob_rl_te[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rl_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, 0.25, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+## **4 Regresión logística con datos balanceados - Método both**
+```{r modelo-rl-balanceado, echo=FALSE}
+
+modelo_rl_bal_both <- glm(
+  formula_rl,
+  family = binomial,
+  data = data_train_bal_both #datos balanceados
+)
+
+summary(modelo_rl_bal_both)
+
+```
+
+Explicar...
+
+```{r interpretacion-rl-both, echo=FALSE}
+interpretar_parametros(modelo_rl_bal_both)
+```
+
+Explicar...
+
+```{r punto-corte-roc-rl-both, echo=FALSE}
+
+prob_bal_both_train  <- predict(modelo_rl_bal_both,  newdata = data_train_bal_both, type = "response")
+
+roc_bal_both_train <- pROC::roc(data_train_bal_both$default, prob_bal_both_train,
+                           levels = c("good", "bad"), direction = "<", quiet = TRUE)
+
+pc_bal_both <- as.numeric(pROC::coords(
+  roc_bal_both_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+))
+
+roc_rl_tr <- pROC::roc(
+  response = data_train_bal_both$default,
+  predictor = prob_bal_both_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_tr,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - Regresión logística (both) - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r, echo=FALSE}
+
+resultados_opt <- bind_rows(
+  evaluar_modelo(modelo_rl_bal_both, data_train_bal_both, "RL balanceado (both)", "Train balanceado", pc = pc_bal_both),
+  evaluar_modelo(modelo_rl_bal_both, data_test, "RL balanceado (both)", "Test", pc = pc_bal_both)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de modelos con puntos de corte óptimos (RL balanceado (both) = ",
+      round(pc_bal_both,3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+## **5 Regresión logística con datos balanceados - Método SMOTE**
+```{r modelo-rl-balanceado-smote, echo=FALSE}
+
+modelo_rl_bal_smote <- glm(
+  formula_rl,
+  family = binomial,
+  data = data_train_bal_smote #datos balanceados
+)
+
+summary(modelo_rl_bal_smote)
+
+```
+
+Explicar...
+
+```{r interpretacion-rl-smote, echo=FALSE}
+interpretar_parametros(modelo_rl_bal_smote)
+```
+
+```{r punto-corte-roc-rl-smote, echo=FALSE}
+
+prob_bal_smote_train  <- predict(modelo_rl_bal_smote,  newdata = data_train_bal_smote, type = "response")
+
+roc_bal_smote_train <- pROC::roc(data_train_bal_smote$default, prob_bal_smote_train,
+                           levels = c("good", "bad"), direction = "<", quiet = TRUE)
+
+pc_bal_smote <- as.numeric(pROC::coords(
+  roc_bal_smote_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+))
+
+roc_rl_tr <- pROC::roc(
+  response = data_train_bal_smote$default,
+  predictor = prob_bal_smote_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  auc = TRUE,
+  ci = TRUE
+)
+
+pROC::plot.roc(
+  roc_rl_tr,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - Regresión logística (SMOTE) - Datos de entrenamiento"
+)
+```
+
+```{r, echo=FALSE}
+
+resultados_opt <- bind_rows(
+  evaluar_modelo(modelo_rl_bal_smote, data_train_bal_both, "RL balanceado (SMOTE)", "Train balanceado", pc = pc_bal_smote),
+  evaluar_modelo(modelo_rl_bal_smote, data_test, "RL balanceado (SMOTE)", "Test", pc = pc_bal_smote)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de modelos con puntos de corte óptimos (RL balanceado (SMOTE) = ",
+      round(pc_bal_both,3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+## **6 Árbol de decisión**
+
+Explicar...
+```{r tree-original, echo=FALSE}
+
+set.seed(123)
+
+modelo_tree_orig_full <- rpart::rpart(
+  formula = default ~ .,
+  data = data_train,
+  method = "class",
+  control = rpart.control(
+    cp = 0.001,
+    minsplit = 20, # Mínimo de observaciones a medir
+    xval = 10 # Validación cruzada
+  )
+)
+
+printcp(modelo_tree_orig_full)
+```
+
+Explicar...
+
+```{r, echo=FALSE}
+rpart.plot(modelo_tree_orig_full)
+```
+
+Explicar...
+
+### Poda del árbol
+
+```{r poda-original, echo=FALSE}
+cp_orig_tree <- modelo_tree_orig_full$cptable[
+  which.min(modelo_tree_orig_full$cptable[, "xerror"]),
+  "CP"
+]
+
+cp_orig_tree
+
+modelo_tree_orig <- prune(
+  modelo_tree_orig_full,
+  cp = cp_orig_tree
+)
+```
+
+```{r grafico-tree-original, fig.width=9, fig.height=6, echo=FALSE}
+rpart.plot(
+  modelo_tree_orig,
+  type = 2,
+  extra = 104,
+  fallen.leaves = TRUE,
+  main = "Árbol de clasificación - Datos originales"
+)
+```
+
+Explicar...
+
+### Importancia de variables
+
+```{r importancia-variables-orig, echo=FALSE}
+imp_orig <- modelo_tree_orig$variable.importance
+
+tabla_imp <- bind_rows(
+  tibble(Variable = names(imp_orig), Importancia = as.numeric(imp_orig), Modelo = "TREE original"),
+) %>%
+  filter(!is.na(Variable)) %>%
+  group_by(Modelo) %>%
+  mutate(Aporte = Importancia / sum(Importancia)) %>%
+  ungroup()
+
+tabla_imp %>%
+  arrange(Modelo, desc(Aporte)) %>%
+  group_by(Modelo) %>%
+  slice_head(n = 10) %>%
+  mutate(Aporte = round(Aporte, 3)) %>%
+  kable(caption = "Principales variables según importancia relativa") %>%
+  kable_styling(full_width = FALSE)
+```
+
+```{r grafico-importancia-orig, echo=FALSE, fig.height=6, fig.width=9}
+tabla_imp %>%
+  group_by(Modelo) %>%
+  slice_max(Aporte, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(Variable, Aporte), y = Aporte, fill = Modelo)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~Modelo, scales = "free_y") +
+  labs(
+    title = "Importancia relativa de variables",
+    x = "Variable",
+    y = "Aporte relativo"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Explicar...
+
+### Evaluación de desempeño
+
+```{r funcion-evaluacion-tree, echo=FALSE}
+evaluar_tree <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
+  
+  prob <- predict(modelo, newdata = datos, type = "prob")[, "bad"]
+  
+  pred <- factor(
+    ifelse(prob > pc, "bad", "good"),
+    levels = c("good", "bad")
+  )
+  
+  ref <- factor(datos$default, levels = c("good", "bad"))
+  
+  cm <- caret::confusionMatrix(
+    pred,
+    ref,
+    positive = "bad",
+    mode = "everything"
+  )
+  
+  roc_obj <- pROC::roc(
+    ref,
+    prob,
+    levels = c("good", "bad"),
+    direction = "<",
+    quiet = TRUE
+  )
+  
+  tibble(
+    Modelo = nombre_modelo,
+    Conjunto = conjunto,
+    Punto_corte = pc,
+    Accuracy = as.numeric(cm$overall["Accuracy"]),
+    Kappa = as.numeric(cm$overall["Kappa"]),
+    Sensitivity = as.numeric(cm$byClass["Sensitivity"]),
+    Specificity = as.numeric(cm$byClass["Specificity"]),
+    Precision = as.numeric(cm$byClass["Precision"]),
+    F1 = as.numeric(cm$byClass["F1"]),
+    Balanced_Accuracy = as.numeric(cm$byClass["Balanced Accuracy"]),
+    AUC = as.numeric(pROC::auc(roc_obj)),
+    MCC = as.numeric(mltools::mcc(preds = pred, actuals = ref))
+  )
+}
+```
+
+```{r punto-corte-roc, echo=FALSE}
+prob_orig_train <- predict(modelo_tree_orig, newdata = data_train, type = "prob")[, "bad"]
+
+roc_orig_train <- pROC::roc(
+  data_train$default,
+  prob_orig_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  quiet = TRUE
+)
+
+pc_orig <- pROC::coords(
+  roc_orig_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+)[[1]][1] %>% as.numeric()
+
+tibble(
+  Modelo = c("TREE original"),
+  Punto_corte_optimo = c(pc_orig)
+) %>%
+  mutate(Punto_corte_optimo = round(Punto_corte_optimo, 3)) %>%
+  kable(caption = "Puntos de corte óptimos estimados en entrenamiento") %>%
+  kable_styling(full_width = FALSE)
+
+pROC::plot.roc(
+  roc_orig_train,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - TREE original - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r evaluacion-opt-orig, echo=FALSE}
+resultados_opt <- bind_rows(
+  evaluar_tree(modelo_tree_orig, data_train, "TREE original", "Train original", pc = pc_orig),
+  evaluar_tree(modelo_tree_orig, data_test, "TREE original", "Test", pc = pc_orig)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de árboles con puntos de corte óptimos (TREE original = ",
+      round(pc_orig, 3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+```{r distribucion-probabilidades-orig, fig.height=6, echo=FALSE}
+
+prob_tree_te <- predict(modelo_tree_orig, newdata = data_test, type = "prob")[, "bad"]
+
+with(data_test, {
+  d_si <- density(prob_tree_te[default == "bad"])
+  d_no <- density(prob_tree_te[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_tree_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Explicar...
+
+## **7 Random Forest**
+
+Explicar...
+
+```{r rf-original, echo=FALSE}
+set.seed(123)
+
+p <- ncol(data_train) - 1
+
+modelo_rf_orig <- ranger::ranger(
+  default ~ .,
+  data = data_train,
+  probability = TRUE,
+  num.trees = 500,
+  mtry = floor(sqrt(p)),
+  min.node.size = 10,
+  importance = "impurity",
+  seed = 123
+)
+
+modelo_rf_orig
+```
+
+Explicar (ajustar hiperparámetros) y OOB...
+
+```{r importancia-variables-rf, echo=FALSE}
+imp_orig <- modelo_rf_orig$variable.importance
+
+tabla_imp <- bind_rows(
+  tibble(Variable = names(imp_orig), Importancia = as.numeric(imp_orig), Modelo = "RF original")
+) %>%
+  filter(!is.na(Variable)) %>%
+  group_by(Modelo) %>%
+  mutate(Aporte = Importancia / sum(Importancia)) %>%
+  ungroup()
+
+tabla_imp %>%
+  arrange(Modelo, desc(Aporte)) %>%
+  group_by(Modelo) %>%
+  slice_head(n = 10) %>%
+  mutate(Aporte = round(Aporte, 3)) %>%
+  kable(caption = "Principales variables según importancia relativa") %>%
+  kable_styling(full_width = FALSE)
+```
+
+```{r grafico-importancia-rf, echo=FALSE, fig.height=6, fig.width=9}
+tabla_imp %>%
+  group_by(Modelo) %>%
+  slice_max(Aporte, n = 10) %>%
+  ungroup() %>%
+  ggplot(aes(x = reorder(Variable, Aporte), y = Aporte, fill = Modelo)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~Modelo, scales = "free_y") +
+  labs(
+    title = "Importancia relativa de variables",
+    x = "Variable",
+    y = "Aporte relativo"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+Explicar...
+
+### Evaluación de desempeño
+
+```{r funcion-evaluacion-rf, echo=FALSE}
+predecir_rf <- function(modelo, datos) {
+  pred <- predict(modelo, data = datos)$predictions
+  as.numeric(pred[, "bad"])
+}
+
+evaluar_rf <- function(modelo, datos, nombre_modelo, conjunto, pc = 0.5) {
+  
+  prob <- predecir_rf(modelo, datos)
+  
+  pred <- factor(
+    ifelse(prob > pc, "bad", "good"),
+    levels = c("good", "bad")
+  )
+  
+  ref <- factor(datos$default, levels = c("good", "bad"))
+  
+  cm <- caret::confusionMatrix(
+    pred,
+    ref,
+    positive = "bad",
+    mode = "everything"
+  )
+  
+  roc_obj <- pROC::roc(
+    ref,
+    prob,
+    levels = c("good", "bad"),
+    direction = "<",
+    quiet = TRUE
+  )
+  
+  tibble(
+    Modelo = nombre_modelo,
+    Conjunto = conjunto,
+    Punto_corte = pc,
+    Accuracy = as.numeric(cm$overall["Accuracy"]),
+    Kappa = as.numeric(cm$overall["Kappa"]),
+    Sensitivity = as.numeric(cm$byClass["Sensitivity"]),
+    Specificity = as.numeric(cm$byClass["Specificity"]),
+    Precision = as.numeric(cm$byClass["Precision"]),
+    F1 = as.numeric(cm$byClass["F1"]),
+    Balanced_Accuracy = as.numeric(cm$byClass["Balanced Accuracy"]),
+    AUC = as.numeric(pROC::auc(roc_obj)),
+    MCC = as.numeric(mltools::mcc(preds = pred, actuals = ref))
+  )
+}
+```
+
+```{r punto-corte-roc-rf, echo=FALSE}
+prob_orig_train <- predecir_rf(modelo_rf_orig, data_train)
+
+roc_orig_train <- pROC::roc(
+  data_train$default,
+  prob_orig_train,
+  levels = c("good", "bad"),
+  direction = "<",
+  quiet = TRUE
+)
+
+pc_orig <- pROC::coords(
+  roc_orig_train,
+  x = "best",
+  best.method = "youden",
+  ret = "threshold"
+)[[1]][1] %>% as.numeric()
+
+tibble(
+  Modelo = c("RF original"),
+  Punto_corte_optimo = c(pc_orig)
+) %>%
+  mutate(Punto_corte_optimo = round(Punto_corte_optimo, 3)) %>%
+  kable(caption = "Puntos de corte óptimos estimados en entrenamiento") %>%
+  kable_styling(full_width = FALSE)
+
+pROC::plot.roc(
+  roc_orig_train,
+  legacy.axes = TRUE,
+  print.thres = "best",
+  print.auc = TRUE,
+  col = "#1C5A99",
+  grid = TRUE,
+  main = "Curva ROC - RF original - Datos de entrenamiento"
+)
+```
+
+Explicar...
+
+```{r evaluacion-opt-rf, echo=FALSE}
+resultados_opt <- bind_rows(
+  evaluar_rf(modelo_rf_orig, data_train, "RF original", "Train original", pc = pc_orig),
+  evaluar_rf(modelo_rf_orig, data_test, "RF original", "Test", pc = pc_orig)
+)
+
+resultados_opt %>%
+  mutate(
+    Escenario = paste(Modelo, Conjunto, sep = " - ")
+  ) %>%
+  select(-Modelo, -Conjunto) %>%
+  pivot_longer(
+    cols = -Escenario,
+    names_to = "Métrica",
+    values_to = "Valor"
+  ) %>%
+  filter(Métrica != "Punto_corte") %>%
+  pivot_wider(
+    names_from = Escenario,
+    values_from = Valor
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(.x, 3))
+  ) %>%
+  kable(
+    caption = paste0(
+      "Comparación de Random Forest con puntos de corte óptimos (RF original = ",
+      round(pc_orig, 3),
+      ")"
+    )
+  ) %>%
+  kable_styling(full_width = FALSE)
+```
+
+Explicar...
+
+```{r distribucion-probabilidades-rf, fig.height=6, echo=FALSE}
+
+prob_rf_te <- pred <- predict(modelo_rf_orig, data = data_test)$predictions[, "bad"]
+
+with(data_test, {
+  d_si <- density(prob_rf_te[default == "bad"])
+  d_no <- density(prob_rf_te[default == "good"])
+  
+  plot(
+    NULL,
+    xlim = range(prob_rf_te),
+    ylim = range(c(d_si$y, d_no$y)),
+    type = "n",
+    ylab = "Densidad",
+    xlab = "Probabilidad estimada de default",
+    main = "Distribución de probabilidades estimadas - Datos de prueba"
+  )
+  lines(d_no, col = color[1], lwd = 2)
+  lines(d_si, col = color[2], lwd = 2)
+  
+  pc_option <- c(0.50, as.numeric(pc_orig))
+  abline(v = pc_option, col = "red", lty = 2)
+  text(pc_option, par("usr")[4] * 0.8, paste("PC =", round(pc_option, 3)), cex = 0.8, adj = 0)
+  
+  legend(
+    "topright",
+    legend = c("No default", "Default"),
+    col = c(color[1], color[2]),
+    lwd = 2,
+    bty = "n"
+  )
+})
+```
+
+Explicar...
